@@ -15,18 +15,19 @@ export default function Home() {
               홍길동
             </h1>
             <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-600 dark:bg-blue-950/60 dark:text-blue-400">
-              Student
+              Developer
             </span>
           </div>
 
           {/* Subtitle / Role */}
           <p className="mt-1 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-            Vibe Coding Learner
+            Frontend &amp; Web Developer
           </p>
 
           {/* Bio */}
           <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-            안녕하세요 ! 바이브 코딩을 배우고 있는 대학생 입니다.
+            사용자 경험과 직관적인 인터페이스를 고민하는 개발자입니다.<br />
+            문제를 코드로 해결하고 새로운 기술을 배우며 성장하는 과정을 즐깁니다.
           </p>
         </div>
 
