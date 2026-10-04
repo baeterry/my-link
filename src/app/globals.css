@@ -1,88 +1,68 @@
 @import "tailwindcss";
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 
 :root {
-  --deep-space: #1e1b4b;
-  --surface-raised: #2e2a6e;
-  --surface-sunken: #141136;
-  --surface-overlay: #3d3890;
-  --nebula: #a78bfa;
-  --star: #fde047;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --error: #f87171;
-  --info: #60a5fa;
+  --tds-blue-500: #3182f6;
+  --tds-blue-600: #1b64da;
+  --tds-blue-50: #e8f3ff;
+  --tds-grey-900: #191f28;
+  --tds-grey-800: #333d4b;
+  --tds-grey-700: #4e5968;
+  --tds-grey-600: #6b7684;
+  --tds-grey-500: #8b95a1;
+  --tds-grey-400: #b0b8c1;
+  --tds-grey-300: #d1d6db;
+  --tds-grey-200: #e5e8eb;
+  --tds-grey-100: #f2f4f6;
+  --tds-grey-50: #f9fafb;
+  --tds-green-500: #04c056;
+  --tds-red-500: #f04452;
+  --tds-yellow-500: #ffc342;
+  --tds-overlay-press: rgba(0, 0, 0, 0.06);
 
-  --background: var(--deep-space);
-  --foreground: #f8fafc;
+  --background: #f2f4f6;
+  --foreground: #191f28;
 }
 
 @theme inline {
-  --color-deep-space: #1e1b4b;
-  --color-surface-raised: #2e2a6e;
-  --color-surface-sunken: #141136;
-  --color-surface-overlay: #3d3890;
-  --color-nebula: #a78bfa;
-  --color-star: #fde047;
-  --color-success: #4ade80;
-  --color-warning: #fbbf24;
-  --color-error: #f87171;
-  --color-info: #60a5fa;
-
-  --font-headline: var(--font-fredoka), cursive, sans-serif;
-  --font-sans: var(--font-dm-sans), sans-serif;
-  --font-mono: var(--font-space-mono), monospace;
+  --color-blue-500: #3182f6;
+  --color-blue-600: #1b64da;
+  --color-blue-50: #e8f3ff;
+  --color-grey-900: #191f28;
+  --color-grey-800: #333d4b;
+  --color-grey-700: #4e5968;
+  --color-grey-600: #6b7684;
+  --color-grey-500: #8b95a1;
+  --color-grey-400: #b0b8c1;
+  --color-grey-300: #d1d6db;
+  --color-grey-200: #e5e8eb;
+  --color-grey-100: #f2f4f6;
+  --color-grey-50: #f9fafb;
+  --color-green-500: #04c056;
+  --color-red-500: #f04452;
+  --color-yellow-500: #ffc342;
 }
 
 body {
-  background-color: #1e1b4b;
-  color: #f8fafc;
-  font-family: var(--font-dm-sans), sans-serif;
-  min-height: 100vh;
+  background-color: #f2f4f6;
+  color: #191f28;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  letter-spacing: -0.015em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.font-headline {
-  font-family: var(--font-fredoka), cursive, sans-serif;
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
-.font-mono-custom {
-  font-family: var(--font-space-mono), monospace;
+/* TDS Active State Overlay */
+.tds-press:active {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
-/* StarChart Glow Effects */
-.glow-nebula-sm {
-  box-shadow: 0 0 8px rgba(167, 139, 250, 0.3);
-}
-
-.glow-nebula-md {
-  box-shadow: 0 0 16px rgba(167, 139, 250, 0.4);
-}
-
-.glow-nebula-lg {
-  box-shadow: 0 0 32px rgba(167, 139, 250, 0.5);
-}
-
-.glow-star-sm {
-  box-shadow: 0 0 8px rgba(253, 224, 71, 0.35);
-}
-
-.glow-star-md {
-  box-shadow: 0 0 16px rgba(253, 224, 71, 0.5);
-}
-
-.glow-star-lg {
-  box-shadow: 0 0 32px rgba(253, 224, 71, 0.6);
-}
-
-/* Star Twinkle Animation */
-@keyframes twinkle {
-  0%, 100% { opacity: 0.2; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
-
-.animate-twinkle {
-  animation: twinkle 3s ease-in-out infinite;
-}
-
-.animate-twinkle-delayed {
-  animation: twinkle 4s ease-in-out infinite 1.5s;
+.tds-btn-press:active {
+  opacity: 0.85;
+  transform: scale(0.985);
+  transition: transform 0.12s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
