@@ -9,11 +9,14 @@ import {
   Briefcase,
   Copy,
   Check,
-  Code,
-  ArrowUpRight,
+  Sparkles,
+  Star,
+  Compass,
+  Rocket,
+  ChevronRight,
 } from "lucide-react";
 
-// Clean inline Github SVG icon
+// Clean inline Github SVG icon for cosmic theme
 function GithubIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -40,241 +43,268 @@ export default function Home() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const links = [
+  const cosmicLinks = [
     {
-      id: "01",
-      title: "GitHub Repository",
-      description: "오픈소스 및 사이드 프로젝트 저장소",
+      id: "mission-1",
+      title: "GitHub Mission Base",
+      description: "오픈소스 코드베이스 및 코스믹 프로젝트 저장소",
       url: "https://github.com/baeterry",
       icon: GithubIcon,
-      bg: "bg-[#ffdf00]",
-      hoverBg: "hover:bg-[#ffe838]",
-      badge: "POPULAR",
-      badgeColor: "bg-black text-white",
+      stars: "+150 Stars",
+      status: "Active Orbit",
+      statusType: "completed",
     },
     {
-      id: "02",
-      title: "Tech Blog & Notes",
-      description: "배운 것을 기록하고 공유하는 기술 블로그",
+      id: "mission-2",
+      title: "Nebula Tech Journal",
+      description: "새로운 기술 탐험과 배움의 기록 로그",
       url: "https://github.com/baeterry",
       icon: Globe,
-      bg: "bg-[#a3e635]",
-      hoverBg: "hover:bg-[#bef264]",
-      badge: "WRITING",
-      badgeColor: "bg-white text-black",
+      stars: "+90 Stars",
+      status: "Weekly Log",
+      statusType: "info",
     },
     {
-      id: "03",
-      title: "Portfolio Projects",
-      description: "직접 기획하고 만든 웹 서비스 쇼케이스",
+      id: "mission-3",
+      title: "Constellation Projects",
+      description: "직접 설계하고 완성한 웹 서비스 쇼케이스",
       url: "https://github.com/baeterry",
       icon: Briefcase,
-      bg: "bg-[#38bdf8]",
-      hoverBg: "hover:bg-[#7dd3fc]",
-      badge: "FEATURED",
-      badgeColor: "bg-[#fb7185] text-white",
+      stars: "+300 Stars",
+      status: "Featured",
+      statusType: "warning",
     },
     {
-      id: "04",
-      title: "Send Direct Email",
-      description: "새로운 협업 제안 및 질문 환영",
+      id: "mission-4",
+      title: "Subspace Transmission",
+      description: "새로운 협업 제안 및 커피챗 전송 채널",
       url: "mailto:contact@example.com",
       icon: Mail,
-      bg: "bg-[#f472b6]",
-      hoverBg: "hover:bg-[#f490c4]",
-      badge: "CONTACT",
-      badgeColor: "bg-black text-white",
+      stars: "+50 Stars",
+      status: "Open Beacon",
+      statusType: "completed",
     },
   ];
 
-  const techStacks = [
-    { name: "Next.js 16", bg: "bg-white text-black" },
-    { name: "React 19", bg: "bg-[#67e8f9] text-black" },
-    { name: "TypeScript", bg: "bg-[#60a5fa] text-white" },
-    { name: "Tailwind CSS", bg: "bg-[#5eead4] text-black" },
-    { name: "Node.js", bg: "bg-[#86efac] text-black" },
-    { name: "Git & GitHub", bg: "bg-[#fca5a5] text-black" },
+  const cosmicTechBadges = [
+    { name: "Next.js 16", tag: "Engine" },
+    { name: "React 19", tag: "Core" },
+    { name: "TypeScript", tag: "Shield" },
+    { name: "Tailwind CSS", tag: "Aesthetics" },
+    { name: "Node.js", tag: "Thruster" },
+    { name: "Git", tag: "Nav" },
   ];
 
   return (
-    <main className="flex min-h-screen w-full items-center justify-center p-3 sm:p-6 md:p-8">
-      {/* Outer Retro Neobrutalism Window */}
-      <div className="relative w-full max-w-xl rounded-2xl border-3 sm:border-4 border-black bg-[#fafaf9] shadow-[5px_5px_0px_0px_#000000] sm:shadow-[8px_8px_0px_0px_#000000] md:shadow-[10px_10px_0px_0px_#000000]">
+    <main className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#1E1B4B] px-4 py-10 sm:px-6 sm:py-16">
+      
+      {/* Background Cosmic Starfield & Nebula Glows */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        {/* Deep Nebula Ambient Glows */}
+        <div className="absolute -left-32 -top-32 h-[450px] w-[450px] rounded-full bg-[#A78BFA]/15 blur-[120px]" />
+        <div className="absolute -right-32 top-1/3 h-[500px] w-[500px] rounded-full bg-[#3D3890]/40 blur-[140px]" />
+        <div className="absolute bottom-10 left-1/4 h-[350px] w-[350px] rounded-full bg-[#FDE047]/10 blur-[100px]" />
+
+        {/* Twinkling Space Stars */}
+        <div className="animate-twinkle absolute left-[15%] top-[18%] h-2 w-2 rounded-full bg-[#FDE047]" />
+        <div className="animate-twinkle-delayed absolute right-[20%] top-[25%] h-1.5 w-1.5 rounded-full bg-white" />
+        <div className="animate-twinkle absolute left-[80%] bottom-[30%] h-2 w-2 rounded-full bg-[#A78BFA]" />
+        <div className="animate-twinkle-delayed absolute left-[25%] bottom-[15%] h-1.5 w-1.5 rounded-full bg-[#FDE047]" />
+        <div className="animate-twinkle absolute right-[10%] top-[60%] h-2.5 w-2.5 rounded-full bg-white/80" />
+      </div>
+
+      {/* Main StarChart Card (Raised Surface with Nebula Border) */}
+      <div className="relative z-10 w-full max-w-lg rounded-2xl border border-[#A78BFA]/30 bg-[#2E2A6E] p-6 shadow-2xl backdrop-blur-md sm:p-8">
         
-        {/* Retro Window Title Bar */}
-        <div className="flex items-center justify-between border-b-3 sm:border-b-4 border-black bg-[#ff6b6b] px-3 py-2 sm:px-4 sm:py-3">
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <span className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full border-2 border-black bg-[#ff5f56]" />
-            <span className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full border-2 border-black bg-[#ffbd2e]" />
-            <span className="h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full border-2 border-black bg-[#27c93f]" />
+        {/* Top Header Mission Status Pill */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2 rounded-full bg-[#141136] px-3.5 py-1.5 border border-[#A78BFA]/20">
+            <Rocket className="h-4 w-4 text-[#FDE047]" />
+            <span className="font-mono-custom text-xs font-bold uppercase tracking-wider text-[#A78BFA]">
+              Mission Log 01
+            </span>
           </div>
-          <span className="truncate px-2 font-mono text-[11px] font-black uppercase tracking-wide text-black sm:text-xs md:text-sm">
-            baeterry.dev - Profile Card v2.0
-          </span>
-          <div className="flex shrink-0 items-center gap-1 font-mono text-[10px] sm:text-xs font-bold">
-            <span className="rounded border border-black bg-white px-1 sm:px-1.5 py-0.5">_</span>
-            <span className="rounded border border-black bg-white px-1 sm:px-1.5 py-0.5">✕</span>
+
+          {/* Achievement Star Badge (Elevated Pill with Star Glow) */}
+          <div className="flex items-center gap-1.5 rounded-full border border-[#FDE047]/60 bg-[#141136] px-3.5 py-1.5 glow-star-sm">
+            <Star className="h-4 w-4 fill-[#FDE047] text-[#FDE047]" />
+            <span className="font-headline text-xs font-bold text-[#FDE047]">
+              1,280 Stars
+            </span>
           </div>
         </div>
 
-        {/* Inner Content Area */}
-        <div className="relative p-4 sm:p-6 md:p-8">
-          {/* Top Floating Badges */}
-          <div className="absolute -top-4 right-3 sm:-top-5 sm:right-4 z-10 rotate-2 sm:rotate-3 rounded-lg border-2 sm:border-3 border-black bg-[#4ade80] px-2.5 py-0.5 sm:px-3.5 sm:py-1 text-[10px] sm:text-xs font-black uppercase tracking-wide text-black shadow-[2px_2px_0px_0px_#000] sm:shadow-[3px_3px_0px_0px_#000]">
-            ⚡ OPEN FOR WORK
-          </div>
-
-          <div className="absolute -top-3 left-3 sm:-top-3 sm:left-4 z-10 -rotate-2 sm:-rotate-3 rounded-lg border-2 sm:border-3 border-black bg-[#f43f5e] px-2.5 py-0.5 sm:px-3 sm:py-1 font-mono text-[10px] sm:text-xs font-black text-white shadow-[2px_2px_0px_0px_#000] sm:shadow-[3px_3px_0px_0px_#000]">
-            🔥 VIBE CODER
-          </div>
-
-          {/* Profile Header & Visual Section */}
-          <div className="mt-3 sm:mt-2 flex flex-col items-center text-center">
-            
-            {/* Avatar & Badges */}
-            <div className="relative mb-4 sm:mb-5">
-              <div className="relative h-24 w-24 sm:h-28 sm:w-28 md:h-32 md:w-32 overflow-hidden rounded-2xl border-3 sm:border-4 border-black bg-white shadow-[4px_4px_0px_0px_#000] sm:shadow-[5px_5px_0px_0px_#000]">
+        {/* Profile Avatar & Space Rank Header */}
+        <div className="flex flex-col items-center text-center">
+          
+          {/* Avatar with Cosmic Orbit Ring & Glow */}
+          <div className="relative mb-5 group">
+            <div className="relative h-28 w-28 overflow-hidden rounded-full border-2 border-[#A78BFA] bg-[#141136] p-1 glow-nebula-md transition-transform duration-300 group-hover:scale-105 sm:h-32 sm:w-32">
+              <div className="relative h-full w-full overflow-hidden rounded-full">
                 <Image
                   src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&q=80"
-                  alt="baeterry 프로필 사진"
+                  alt="baeterry Cosmic Explorer Profile"
                   fill
                   className="object-cover"
                   priority
                 />
               </div>
+            </div>
 
-              {/* Mini Icon Sticker */}
-              <div className="absolute -bottom-1.5 -right-1.5 sm:-bottom-2 sm:-right-2 flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl border-2 sm:border-3 border-black bg-[#ffdf00] text-black shadow-[2px_2px_0px_0px_#000] sm:shadow-[3px_3px_0px_0px_#000]">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.5]" />
+            {/* Orbiting Planet / Tech Badge */}
+            <div className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#FDE047] bg-[#1E1B4B] text-[#FDE047] glow-star-sm">
+              <Sparkles className="h-4 w-4" />
+            </div>
+          </div>
+
+          {/* Space Explorer Name (Fredoka 36px bold) */}
+          <div className="flex items-center gap-2">
+            <h1 className="font-headline text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              baeterry
+            </h1>
+            <span className="rounded-full bg-[#4ADE80]/20 px-2.5 py-0.5 font-headline text-xs font-semibold text-[#4ADE80]">
+              Lv.12 Explorer
+            </span>
+          </div>
+
+          {/* Subtitle / Role (Fredoka 18px semibold) */}
+          <p className="mt-1.5 flex items-center gap-1.5 font-headline text-base font-semibold text-[#A78BFA]">
+            <Compass className="h-4 w-4 text-[#FDE047]" />
+            Frontend &amp; Web Developer
+          </p>
+
+          {/* Cosmic Bio Card (Sunken Surface #141136) */}
+          <div className="mt-5 w-full rounded-xl border border-[#A78BFA]/20 bg-[#141136] p-4 text-center">
+            <p className="font-sans text-sm leading-relaxed text-[#E2E8F0] sm:text-base">
+              &ldquo;우주를 탐험하듯 새로운 기술을 배우고 기록합니다.<br className="hidden sm:inline" />
+              직관적인 사용자 인터페이스와 멋진 웹 모험을 만듭니다.&rdquo;
+            </p>
+          </div>
+
+          {/* Tech Stack Chips (Pill-shaped with Nebula Accent) */}
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            {cosmicTechBadges.map((tech) => (
+              <span
+                key={tech.name}
+                className="flex items-center gap-1.5 rounded-full border border-[#A78BFA]/30 bg-[#1E1B4B]/80 px-3 py-1 font-sans text-xs font-medium text-[#E2E8F0] transition hover:border-[#A78BFA] hover:bg-[#A78BFA]/15 hover:text-white"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-[#FDE047]" />
+                {tech.name}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Section Divider with Cosmic Star Icon */}
+        <div className="relative my-7 flex items-center justify-center">
+          <div className="w-full border-t border-[#A78BFA]/20" />
+          <div className="absolute flex items-center gap-1.5 rounded-full border border-[#A78BFA]/30 bg-[#2E2A6E] px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-[#A78BFA]">
+            <Terminal className="h-3.5 w-3.5 text-[#FDE047]" />
+            <span>Active Expeditions</span>
+          </div>
+        </div>
+
+        {/* Cosmic Links List (StarChart Interactive Cards) */}
+        <div className="flex flex-col gap-3.5">
+          {cosmicLinks.map((link) => {
+            const IconComponent = link.icon;
+            
+            // Status Chip Colors per StarChart spec
+            let statusBadgeClass = "bg-[#4ADE80]/20 text-[#4ADE80]";
+            if (link.statusType === "warning") statusBadgeClass = "bg-[#FBBF24]/20 text-[#FBBF24]";
+            if (link.statusType === "info") statusBadgeClass = "bg-[#60A5FA]/20 text-[#60A5FA]";
+
+            return (
+              <a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative flex min-h-[56px] items-center justify-between gap-3 rounded-xl border border-[#A78BFA]/20 bg-[#1E1B4B]/90 p-4 transition-all duration-200 hover:border-[#A78BFA] hover:bg-[#A78BFA]/10 hover:glow-nebula-sm active:scale-[0.99]"
+              >
+                {/* Left Icon + Text Info */}
+                <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#A78BFA]/40 bg-[#2E2A6E] text-[#A78BFA] transition-colors group-hover:border-[#FDE047] group-hover:text-[#FDE047]">
+                    <IconComponent className="h-5 w-5" />
+                  </div>
+                  
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="truncate font-headline text-base font-semibold text-white group-hover:text-[#FDE047]">
+                        {link.title}
+                      </h2>
+                      <span className={`rounded-full px-2 py-0.5 font-sans text-[11px] font-semibold ${statusBadgeClass}`}>
+                        {link.status}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate font-sans text-xs text-[#94A3B8]">
+                      {link.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Star Rewards & Chevron */}
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="hidden sm:inline-flex items-center gap-1 font-headline text-xs font-semibold text-[#FDE047]">
+                    <Star className="h-3 w-3 fill-[#FDE047]" />
+                    {link.stars}
+                  </span>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2E2A6E] text-[#A78BFA] transition-transform group-hover:translate-x-1 group-hover:text-white">
+                    <ChevronRight className="h-4 w-4" />
+                  </div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+
+        {/* Subspace Signal / Copy Email Widget (Sunken Surface with Primary CTA) */}
+        <div className="mt-6 rounded-xl border border-[#A78BFA]/30 bg-[#141136] p-3.5 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2E2A6E] text-[#60A5FA]">
+                <Mail className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="block font-headline text-xs font-semibold text-[#94A3B8]">
+                  Subspace Email
+                </span>
+                <span className="block truncate font-mono-custom text-xs font-bold text-[#F3F4F6] sm:text-sm">
+                  contact@example.com
+                </span>
               </div>
             </div>
 
-            {/* Name and Tag */}
-            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-              <h1 className="font-mono text-2xl font-black tracking-tight text-black sm:text-3xl md:text-4xl">
-                baeterry
-              </h1>
-              <span className="rotate-1 rounded-md border-2 border-black bg-[#c084fc] px-1.5 py-0.5 text-[10px] sm:text-xs font-extrabold text-black shadow-[1.5px_1.5px_0px_0px_#000] sm:shadow-[2px_2px_0px_0px_#000]">
-                DEV 💻
-              </span>
-            </div>
-
-            {/* Subtitle / Role */}
-            <div className="mt-1.5 sm:mt-2 inline-flex items-center gap-1.5 rounded-full border-2 border-black bg-white px-3 py-1 sm:px-4 sm:py-1 text-xs sm:text-sm font-bold text-black shadow-[2px_2px_0px_0px_#000]">
-              <Terminal className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.5]" />
-              <span>Frontend &amp; Web Developer</span>
-            </div>
-
-            {/* Bio Callout Box */}
-            <div className="mt-4 sm:mt-5 w-full rounded-xl border-2 sm:border-3 border-black bg-[#fef08a] p-3 sm:p-4 text-center font-medium text-black shadow-[3px_3px_0px_0px_#000] sm:shadow-[4px_4px_0px_0px_#000]">
-              <p className="text-xs sm:text-sm md:text-base font-bold leading-relaxed break-keep">
-                &ldquo;사용자 경험과 직관적인 인터페이스를 고민합니다.<br className="hidden sm:inline" />
-                문제를 코드로 해결하고 새로운 기술을 배우는 과정을 즐깁니다!&rdquo;
-              </p>
-            </div>
-
-            {/* Tech Stack Sticker Wall */}
-            <div className="mt-4 sm:mt-5 flex flex-wrap justify-center gap-1.5 sm:gap-2">
-              {techStacks.map((tech) => (
-                <span
-                  key={tech.name}
-                  className={`rounded-lg border-2 border-black px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-xs font-black shadow-[1.5px_1.5px_0px_0px_#000] sm:shadow-[2px_2px_0px_0px_#000] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_0px_#000] ${tech.bg}`}
-                >
-                  {tech.name}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Section Divider with Badge */}
-          <div className="relative my-5 sm:my-7 flex items-center justify-center">
-            <div className="w-full border-b-2 sm:border-b-4 border-black" />
-            <div className="absolute rounded-md border-2 border-black bg-white px-2.5 py-0.5 sm:px-3 sm:py-1 font-mono text-[10px] sm:text-xs font-black uppercase text-black shadow-[1.5px_1.5px_0px_0px_#000] sm:shadow-[2px_2px_0px_0px_#000]">
-              ★ SELECT LINK ★
-            </div>
-          </div>
-
-          {/* Link Buttons (Responsive Neobrutalism Action Cards) */}
-          <div className="flex flex-col gap-3 sm:gap-3.5">
-            {links.map((link) => {
-              const IconComp = link.icon;
-              return (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`group relative flex items-center justify-between gap-2.5 rounded-xl border-2 sm:border-3 border-black p-3 sm:p-4 font-bold text-black shadow-[3.5px_3.5px_0px_0px_#000] sm:shadow-[5px_5px_0px_0px_#000] transition-all duration-150 hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 hover:shadow-[1.5px_1.5px_0px_0px_#000] sm:hover:shadow-[2px_2px_0px_0px_#000] active:translate-x-1 active:translate-y-1 sm:active:translate-x-1.5 sm:active:translate-y-1.5 active:shadow-none ${link.bg} ${link.hoverBg}`}
-                >
-                  {/* Left content (Icon + Text) */}
-                  <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3.5">
-                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-lg border-2 border-black bg-white text-black shadow-[1.5px_1.5px_0px_0px_#000] sm:shadow-[2px_2px_0px_0px_#000] group-hover:scale-105 transition-transform">
-                      <IconComp className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.5]" />
-                    </div>
-                    <div className="min-w-0 flex-1 text-left">
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <span className="font-mono text-[10px] sm:text-xs font-black text-black/60 shrink-0">
-                          [{link.id}]
-                        </span>
-                        <h2 className="truncate text-sm font-black text-black sm:text-base md:text-lg">
-                          {link.title}
-                        </h2>
-                      </div>
-                      <p className="mt-0.5 truncate text-[11px] sm:text-xs font-semibold text-black/80">
-                        {link.description}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Right side (Badge + Arrow Button) */}
-                  <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                    {link.badge && (
-                      <span className={`hidden md:inline-block rounded border border-black px-1.5 py-0.5 text-[10px] font-black ${link.badgeColor}`}>
-                        {link.badge}
-                      </span>
-                    )}
-                    <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg border-2 border-black bg-white text-black transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shadow-[1.5px_1.5px_0px_0px_#000] sm:shadow-[2px_2px_0px_0px_#000]">
-                      <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[3]" />
-                    </div>
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-
-          {/* Quick Copy Email Widget */}
-          <div className="mt-4 sm:mt-5 flex items-center justify-between gap-2 rounded-xl border-2 sm:border-3 border-black bg-white p-2.5 sm:p-3 shadow-[3px_3px_0px_0px_#000] sm:shadow-[4px_4px_0px_0px_#000]">
-            <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2 overflow-hidden text-xs font-mono font-bold text-black sm:text-sm">
-              <span className="shrink-0 rounded bg-black px-1.5 py-0.5 text-[10px] sm:text-xs text-white">EMAIL</span>
-              <span className="truncate text-xs sm:text-sm">contact@example.com</span>
-            </div>
+            {/* StarChart Primary Button (Star Yellow Fill, Deep Space Text, glow-star-sm) */}
             <button
               onClick={handleCopyEmail}
               type="button"
-              className="flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-lg border-2 border-black bg-[#ffdf00] px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-black text-black shadow-[1.5px_1.5px_0px_0px_#000] sm:shadow-[2px_2px_0px_0px_#000] transition active:translate-x-0.5 active:translate-y-0.5 active:shadow-none hover:bg-[#ffe838]"
+              className="flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-[#FDE047] px-5 py-2.5 font-headline text-sm font-bold text-[#1E1B4B] transition-all hover:bg-[#FEF08A] hover:glow-star-sm active:opacity-90"
             >
               {copied ? (
                 <>
-                  <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 stroke-[3] text-green-700" />
-                  <span>COPIED!</span>
+                  <Check className="h-4 w-4 stroke-[2.5]" />
+                  <span>Transmitted!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="h-3 w-3 sm:h-3.5 sm:w-3.5 stroke-[2.5]" />
-                  <span>COPY</span>
+                  <Copy className="h-4 w-4 stroke-[2.5]" />
+                  <span>Copy Signal</span>
                 </>
               )}
             </button>
           </div>
+        </div>
 
-          {/* Bottom Footer Info */}
-          <div className="mt-5 sm:mt-6 flex flex-col items-center justify-between gap-2 border-t-2 sm:border-t-3 border-black pt-3 sm:pt-4 font-mono text-[11px] sm:text-xs font-bold text-black sm:flex-row">
-            <span>© 2026 baeterry. All rights reserved.</span>
-            <span className="flex items-center gap-1 rounded border border-black bg-[#fed7aa] px-2 py-0.5">
-              <span>DESIGN: NEOBRUTALISM</span>
-            </span>
+        {/* Footer info with Constellation Tag */}
+        <div className="mt-7 flex flex-col items-center justify-between gap-2 border-t border-[#A78BFA]/20 pt-4 text-center font-sans text-xs text-[#94A3B8] sm:flex-row">
+          <span>© 2026 baeterry. All rights reserved.</span>
+          <div className="flex items-center gap-1.5 font-headline font-semibold text-[#A78BFA]">
+            <Sparkles className="h-3.5 w-3.5 text-[#FDE047]" />
+            <span>Powered by StarChart Design</span>
           </div>
         </div>
+
       </div>
     </main>
   );
