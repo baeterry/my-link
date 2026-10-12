@@ -21,6 +21,7 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { ProfileData, DEFAULT_PROFILE, LinkItem } from "@/types/profile";
+import { AddLinkDialog } from "@/components/AddLinkDialog";
 
 const STORAGE_KEY = "mylink_profile_data";
 
@@ -85,14 +86,20 @@ export default function ProfilePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<ProfileData>(DEFAULT_PROFILE);
 
+  // 링크 추가 다이얼로그 상태
+  const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
+
   // 1. 로컬스토리지에서 프로필 불러오기 (Mount 시)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        setProfile(parsed);
-        setEditForm(parsed);
+        // Defer state update to next microtask/tick to prevent synchronous setState inside effect warning
+        queueMicrotask(() => {
+          setProfile(parsed);
+          setEditForm(parsed);
+        });
       } else {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROFILE));
       }
@@ -123,7 +130,24 @@ export default function ProfilePage() {
     }
   };
 
-  // 3. 기본값으로 초기화
+  // 3. 다이얼로그에서 단일 링크 추가 시 로컬 상태 및 스토리지에 즉시 반영
+  const handleAddNewLink = (newLink: LinkItem) => {
+    const updatedProfile: ProfileData = {
+      ...profile,
+      links: [newLink, ...profile.links],
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
+      setProfile(updatedProfile);
+      setEditForm(updatedProfile);
+      showToast("새 링크가 성공적으로 추가되었어요 🚀");
+    } catch (e) {
+      console.error("링크 추가 실패:", e);
+      showToast("링크 추가에 실패했어요");
+    }
+  };
+
+  // 4. 기본값으로 초기화
   const handleResetToDefault = () => {
     if (confirm("프로필을 기본 샘플 데이터로 초기화할까요?")) {
       try {
@@ -162,7 +186,7 @@ export default function ProfilePage() {
     setIsEditModalOpen(true);
   };
 
-  // 링크 추가 핸들러
+  // 편집 모달 내부 링크 추가 핸들러
   const handleAddLink = () => {
     const newLink: LinkItem = {
       id: "l_" + Date.now(),
@@ -289,13 +313,23 @@ export default function ProfilePage() {
             <h2 className="text-[17px] font-bold text-[#191F28]">
               추천 링크
             </h2>
-            <Link
-              href="/links"
-              className="flex items-center gap-0.5 text-[13px] font-semibold text-[#3182F6] hover:text-[#1B64DA] transition-colors"
-            >
-              <span>전체보기</span>
-              <ChevronRight className="h-4 w-4" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAddLinkDialogOpen(true)}
+                className="flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2.5 py-1 text-[12px] font-semibold text-[#3182F6] transition hover:bg-[#d6e9ff] active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+                <span>링크 추가</span>
+              </button>
+              <Link
+                href="/links"
+                className="flex items-center gap-0.5 text-[13px] font-semibold text-[#8B95A1] hover:text-[#3182F6] transition-colors"
+              >
+                <span>전체보기</span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
 
           <div className="divide-y divide-[#F2F4F6]">
@@ -533,6 +567,13 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* 새 링크 추가 다이얼로그 (Dialog) */}
+      <AddLinkDialog
+        open={isAddLinkDialogOpen}
+        onOpenChange={setIsAddLinkDialogOpen}
+        onAddLink={handleAddNewLink}
+      />
     </main>
   );
 }

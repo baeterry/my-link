@@ -10,6 +10,7 @@ import {
   Sparkles,
   Layers,
   Filter,
+  Plus,
 } from "lucide-react";
 import { LinkItem, DEFAULT_PROFILE, ProfileData } from "@/types/profile";
 import { DUMMY_LINKS } from "../../../data/links";
@@ -20,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { LinkCardItem } from "@/components/LinkCardItem";
 import { CategoryFilterTabs } from "@/components/CategoryFilterTabs";
+import { AddLinkDialog } from "@/components/AddLinkDialog";
 
 const STORAGE_KEY = "mylink_profile_data";
 
@@ -41,29 +43,53 @@ export default function LinksClient() {
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>("all");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed: ProfileData = JSON.parse(saved);
-        setProfile(parsed);
-        if (parsed.links && parsed.links.length > 0) {
-          setLinks(parsed.links);
-        } else {
-          setLinks(DUMMY_LINKS);
-        }
+        queueMicrotask(() => {
+          setProfile(parsed);
+          if (parsed.links && parsed.links.length > 0) {
+            setLinks(parsed.links);
+          } else {
+            setLinks(DUMMY_LINKS);
+          }
+        });
       } else {
-        setProfile(DEFAULT_PROFILE);
-        setLinks(DUMMY_LINKS);
+        queueMicrotask(() => {
+          setProfile(DEFAULT_PROFILE);
+          setLinks(DUMMY_LINKS);
+        });
       }
     } catch (e) {
       console.error("데이터 로드 실패:", e);
-      setLinks(DUMMY_LINKS);
+      queueMicrotask(() => {
+        setLinks(DUMMY_LINKS);
+      });
     } finally {
       setIsLoaded(true);
     }
   }, []);
+
+  const handleAddLink = (newLink: LinkItem) => {
+    const updatedLinks = [newLink, ...links];
+    const updatedProfile: ProfileData = {
+      ...profile,
+      links: updatedLinks,
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
+      setLinks(updatedLinks);
+      setProfile(updatedProfile);
+      showToast("새 링크가 성공적으로 추가되었어요 🚀");
+    } catch (e) {
+      console.error("링크 저장 실패:", e);
+      showToast("링크 추가에 실패했어요");
+    }
+  };
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -167,6 +193,14 @@ export default function LinksClient() {
 
         <div className="flex items-center gap-1">
           <Button
+            size="sm"
+            onClick={() => setIsAddLinkDialogOpen(true)}
+            className="flex items-center gap-1 rounded-full bg-[#3182F6] px-3 h-8 text-[12px] font-semibold text-white shadow-xs hover:bg-[#1B64DA] active:scale-95 transition-all"
+          >
+            <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+            <span>추가</span>
+          </Button>
+          <Button
             variant="ghost"
             size="icon"
             onClick={handleShare}
@@ -252,11 +286,21 @@ export default function LinksClient() {
                 {filteredLinks.length}
               </Badge>
             </div>
-            {searchQuery && (
-              <span className="text-[12px] text-[#8B95A1]">
-                검색결과
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsAddLinkDialogOpen(true)}
+                className="flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2.5 py-1 text-[12px] font-semibold text-[#3182F6] hover:bg-[#d6e9ff] transition-colors"
+              >
+                <Plus className="h-3 w-3 stroke-[2.5]" />
+                <span>링크 추가</span>
+              </button>
+              {searchQuery && (
+                <span className="text-[12px] text-[#8B95A1]">
+                  검색결과
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="divide-y divide-[#F2F4F6]">
@@ -332,6 +376,13 @@ export default function LinksClient() {
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* 새 링크 추가 다이얼로그 (Dialog) */}
+      <AddLinkDialog
+        open={isAddLinkDialogOpen}
+        onOpenChange={setIsAddLinkDialogOpen}
+        onAddLink={handleAddLink}
+      />
     </main>
   );
 }
