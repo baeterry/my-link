@@ -573,6 +573,7 @@ export default function ProfilePage() {
         open={isAddLinkDialogOpen}
         onOpenChange={setIsAddLinkDialogOpen}
         onAddLink={handleAddNewLink}
+        existingUrls={profile.links.map((l) => l.url)}
       />
     </main>
   );

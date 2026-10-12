@@ -382,6 +382,7 @@ export default function LinksClient() {
         open={isAddLinkDialogOpen}
         onOpenChange={setIsAddLinkDialogOpen}
         onAddLink={handleAddLink}
+        existingUrls={links.map((l) => l.url)}
       />
     </main>
   );
