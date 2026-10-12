@@ -1,7 +1,7 @@
 # [PRD] 마이링크 (MyLink) 제품 요구사항 정의서
 
-- **문서 버전**: v1.0 (MVP)
-- **작성 일자**: 2026-10-04
+- **문서 버전**: v1.1 (shadcn/ui 디자인 시스템 표준 반영)
+- **최종 수정 일자**: 2026-10-12
 - **상태**: 확정 (Approved for MVP)
 - **대상 독자**: 제품 기획자, 프론트엔드/백엔드 개발자, 디자이너
 
@@ -20,7 +20,7 @@
 ### 1.3 핵심 가치 제안 (Value Proposition)
 1. **극도의 단순함과 빠른 세팅**: 3분 안에 소셜 로그인부터 내 고유 링크 완성까지 가능
 2. **실시간 모바일 프리뷰 (WYSIWYG)**: 편집하면서 실제 모바일 화면에 어떻게 보일지 즉시 확인
-3. **토스 디자인 시스템(TDS) 기반의 신뢰감 있는 UI**: 군더더기 없는 타이포그래피와 모바일 터치 친화적 인터랙션 제공
+3. **shadcn/ui 기반의 일관되고 신뢰감 있는 디자인 시스템**: shadcn/ui 컴포넌트 아키텍처를 기반으로 토스 디자인 시스템(TDS) 감성의 인터랙션과 정갈한 타이포그래피 결합
 
 ---
 
@@ -161,6 +161,21 @@ flowchart LR
 | **링크 수정/삭제** | 기존 등록된 링크의 제목 및 URL 즉시 수정, 불필요한 링크 삭제 | P0 |
 | **유효성 검사** | `http://` 또는 `https://` 프로토콜을 포함한 올바른 URL 형식 검증 | P0 |
 | **노출 순서 정렬** | 등록된 순서대로 리스트 표시 (순서 보장) | P0 |
+| **더미 데이터 사용** | `data/links.ts` 및 `public/links.json`에 정의된 6종의 표준 더미 링크 데이터를 사용하여 초기 로딩 및 시연 지원 | P0 |
+
+#### 📋 [FR-04-A] 초기 링크 더미 데이터 명세
+- **관리 파일**: `data/links.ts` (타입 안전 모듈), `data/links.json`, `public/links.json` (정적 fetch용)
+- **적용 정책**:
+  1. **초기 진입 시 기본 표시**: 사용자가 처음 방문하거나 로컬 스토리지에 저장된 데이터가 없는 경우, 백엔드 연동 전까지 더미 링크 데이터를 기본 렌더링.
+  2. **에디터 리셋 연동**: 편집기 내 `[기본값으로 초기화]` 액션 실행 시 본 더미 데이터 세트로 복원.
+- **포함 데이터 항목**:
+  1. `link-1`: 이번 주 브이로그 보러가기 🎬 (`video`, `NEW` 배지)
+  2. `link-2`: 착장 & 소품 정보 모음 🛍️ (`shopping`, `인기` 배지)
+  3. `link-3`: [기간한정] 룸투어 소품 단독 15% 할인 🍂 (`shopping`, `EVENT` 배지)
+  4. `link-4`: 팬들과 함께하는 일상 오픈채팅 💬 (`message`, `소통` 배지)
+  5. `link-5`: 공식 네이버 블로그 일기 ✍️ (`globe`)
+  6. `link-6`: 주간 라이프스타일 뉴스레터 구독 📮 (`link`)
+
 
 ### [FR-05] 실시간 모바일 프리뷰 편집기 (WYSIWYG Admin)
 | 구분 | 요구사항 상세 | 우선순위 |
@@ -177,6 +192,16 @@ flowchart LR
 | **모바일 최적화 뷰** | 인앱 브라우저(인스타그램, 카톡 등) 뷰포트에 맞춘 100vh Safe-Area 대응 | P0 |
 | **인터랙션 피드백** | 링크 버튼 호버 및 탭(Active) 시 토스 스타일의 부드러운 스케일/음영 애니메이션 | P0 |
 | **초고속 렌더링** | SSR(Server Side Rendering) 또는 ISR을 통한 초기 로딩 속도 극대화 | P0 |
+
+### [FR-07] 링크 목록 전용 페이지 (/links)
+| 구분 | 요구사항 상세 | 우선순위 |
+| :--- | :--- | :---: |
+| **전체 링크 탐색** | 등록된 전체 링크를 리스트 형태로 한눈에 탐색 및 접근 지원 | P0 |
+| **실시간 검색** | 링크 제목, 부제목, URL, 태그(배지)에 대한 클라이언트 실시간 검색 (검색창 컴포넌트) | P0 |
+| **카테고리 필터** | 영상, 쇼핑, 커뮤니티, 블로그 등 카테고리별 탭 필터링 (`CategoryFilterTabs`) 및 개수 표시 | P0 |
+| **원클릭 복사** | 링크 항목별 URL 즉시 복사 버튼 및 TDS 토스트 알림 연동 | P0 |
+| **컴포넌트 재사용** | `shadcn/ui` 기반(`Button`, `Badge`, `Card`, `Input`) 및 모듈형 공통 컴포넌트(`LinkCardItem`, `CategoryFilterTabs`)로 구축 | P0 |
+| **스타일 표준** | CSS 모듈 일체 배제, Tailwind CSS v4 유틸리티 클래스 및 shadcn 토큰으로 100% 통일 | P0 |
 
 ---
 
@@ -200,7 +225,7 @@ flowchart TD
     subgraph Client["Frontend (Next.js 16 App Router)"]
         A["Public Page (/[username])"]
         B["Editor / Dashboard (/admin)"]
-        C["Toss Design System UI (Tailwind v4)"]
+        C["shadcn/ui Design System (Tailwind v4)"]
     end
 
     subgraph Backend["Supabase BaaS"]
@@ -212,10 +237,23 @@ flowchart TD
     Client --> Backend
 ```
 
-- **Frontend**: Next.js 16.3 (App Router), React 19, TypeScript
-- **Styling**: Tailwind CSS v4, Lucide React (아이콘)
-- **Design Concept**: 토스 디자인 시스템(TDS) 스타일 가이드 (단정함, 깔끔한 명도 대비, blue-500 액센트)
+- **Frontend**: Next.js 16.4 (App Router), React 19, TypeScript
+- **Styling**: Tailwind CSS v4 (최신 유틸리티 퍼스트 구성), Lucide React (공식 아이콘)
+- **UI & Design System**: **shadcn/ui** 컴포넌트 생태계(`@/components/ui/*`)를 단일 진실 공급원(Single Source of Truth)으로 표준 채택
+  - 모든 기본 컴포넌트(Button, Card, Dialog, Input, Select, Toast 등)는 shadcn/ui CLI(`npx shadcn add`)를 통해 설치 및 확장 관리
+  - 디자인 톤앤매너는 토스 디자인 시스템(TDS) 스타일(정갈한 라운드, 부드러운 탭 피드백, 블루 액센트 및 명도 대비)을 shadcn 테마 토큰과 조합하여 일관되게 적용
 - **Backend & Database**: Supabase (PostgreSQL, Supabase Auth, Storage)
+
+### 5.1 디자인 시스템 구현 가이드 (shadcn/ui & Tailwind CSS 기준)
+1. **컴포넌트 추가 및 재사용 원칙**:
+   - 커스텀 UI 요소를 처음부터 직접 작성하지 않고, 공식 shadcn/ui 컴포넌트(`@/components/ui/`)를 기본 프리셋으로 설치 후 커스텀 스타일링 진행.
+   - 예: `Button` (`@/components/ui/button`), `Dialog` (`@/components/ui/dialog`), `Card` (`@/components/ui/card`), `Input` (`@/components/ui/input`), `Badge` (`@/components/ui/badge`) 등.
+   - 페이지 내 반복되는 패턴은 `src/components/` 경로에 shadcn 컴포넌트를 합성한 재사용 가능한 컴포넌트(`LinkCardItem`, `CategoryFilterTabs` 등)로 모듈화하여 관리.
+2. **스타일링 표준 (Tailwind CSS 100% 통일)**:
+   - **CSS 모듈(`*.module.css`) 사용을 금지**하며, 모든 스타일링은 **Tailwind CSS v4 유틸리티 클래스**와 `cn()` 유틸리티 함수를 통해서만 작성.
+   - 색상, 폰트, 보더 반경(`radius`)은 `src/app/globals.css` 내 shadcn CSS 변수 및 Tailwind 테마 토큰을 통해 일원화 관리.
+   - 터치 프레스 인터랙션(`active:scale-95` / `active:scale-[0.985]`)을 통일감 있게 준수.
+
 
 ---
 

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "link-1",
+    "title": "이번 주 브이로그 보러가기 🎬",
+    "subtitle": "가을맞이 인테리어 룸투어 & 감성 카페 브이로그",
+    "url": "https://www.youtube.com/watch?v=sample1",
+    "badge": "NEW",
+    "badgeColor": "bg-[#E8F3FF] text-[#3182F6]",
+    "iconType": "video"
+  },
+  {
+    "id": "link-2",
+    "title": "착장 & 소품 정보 모음 🛍️",
+    "subtitle": "영상 속 문의 폭주했던 데일리 아이템 링크 정리",
+    "url": "https://smartstore.naver.com/sample_shop",
+    "badge": "인기",
+    "badgeColor": "bg-[#FFF0F0] text-[#F04452]",
+    "iconType": "shopping"
+  },
+  {
+    "id": "link-3",
+    "title": "[기간한정] 룸투어 소품 단독 15% 할인 🍂",
+    "subtitle": "브랜드 공식 콜라보레이션 특별 할인 쿠폰 발급",
+    "url": "https://brand.example.com/exclusive-sale",
+    "badge": "EVENT",
+    "badgeColor": "bg-[#FFF9E6] text-[#FF9E00]",
+    "iconType": "shopping"
+  },
+  {
+    "id": "link-4",
+    "title": "팬들과 함께하는 일상 오픈채팅 💬",
+    "subtitle": "자유롭게 소통하고 다음 콘텐츠 피드백을 나눠요",
+    "url": "https://open.kakao.com/o/sampleChat",
+    "badge": "소통",
+    "badgeColor": "bg-[#E8F3FF] text-[#3182F6]",
+    "iconType": "message"
+  },
+  {
+    "id": "link-5",
+    "title": "공식 네이버 블로그 일기 ✍️",
+    "subtitle": "사진과 감성 글로 기록하는 소소한 일상 기록",
+    "url": "https://blog.naver.com/jieun_daily",
+    "iconType": "globe"
+  },
+  {
+    "id": "link-6",
+    "title": "주간 라이프스타일 뉴스레터 구독 📮",
+    "subtitle": "매주 금요일 아침, 취향 가득한 공간과 플레이리스트 전달",
+    "url": "https://page.stibee.com/subscriptions/sample",
+    "iconType": "link"
+  }
+]

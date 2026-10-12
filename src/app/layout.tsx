@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "baeterry | 토스 스타일 개발자 프로필",
@@ -19,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="h-full bg-[#F2F4F6]">
+    <html lang="ko" className={cn("h-full bg-[#F2F4F6]", "font-sans", geist.variable)}>
       <body className="min-h-full flex flex-col antialiased selection:bg-[#E8F3FF] selection:text-[#3182F6]">
         {children}
       </body>

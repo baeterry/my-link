@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Share2,
   CheckCircle2,
@@ -284,10 +285,17 @@ export default function ProfilePage() {
 
         {/* Links Section */}
         <section className="overflow-hidden rounded-3xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-          <div className="px-5 pt-5 pb-2">
+          <div className="flex items-center justify-between px-5 pt-5 pb-2">
             <h2 className="text-[17px] font-bold text-[#191F28]">
               추천 링크
             </h2>
+            <Link
+              href="/links"
+              className="flex items-center gap-0.5 text-[13px] font-semibold text-[#3182F6] hover:text-[#1B64DA] transition-colors"
+            >
+              <span>전체보기</span>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
 
           <div className="divide-y divide-[#F2F4F6]">
