@@ -19,11 +19,14 @@ import {
   Globe,
   MessageCircle,
   Link as LinkIcon,
+  Loader2,
+  RotateCw,
 } from "lucide-react";
 import { ProfileData, DEFAULT_PROFILE, LinkItem } from "@/types/profile";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
 import {
   addLinkToFirestore,
+  getLinksFromFirestore,
   subscribeLinksFromFirestore,
 } from "@/lib/firestoreLinks";
 
@@ -84,6 +87,8 @@ function getLinkIcon(iconType?: string) {
 export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLinksLoading, setIsLinksLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // 시연용 편집 모달 상태
@@ -93,18 +98,24 @@ export default function ProfilePage() {
   // 링크 추가 다이얼로그 상태
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
 
-  // 1. 로컬스토리지에서 기본 프로필 불러오기 및 Firestore 실시간 동기화
+  // 1. 페이지 로드 시 프로필 메타데이터 로드 및 Firestore('users/anonymous/links') 최신순 링크 실시간 동기화
   useEffect(() => {
+    // 로컬스토리지에서 프로필 메타데이터(이름, 바이오 등) 로드
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        queueMicrotask(() => {
-          setProfile(parsed);
-          setEditForm(parsed);
-        });
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROFILE));
+        setProfile((prev) => ({
+          ...prev,
+          displayName: parsed.displayName ?? prev.displayName,
+          username: parsed.username ?? prev.username,
+          badgeText: parsed.badgeText ?? prev.badgeText,
+          avatarUrl: parsed.avatarUrl ?? prev.avatarUrl,
+          bio: parsed.bio ?? prev.bio,
+          socialLinks: parsed.socialLinks ?? prev.socialLinks,
+          contactEmail: parsed.contactEmail ?? prev.contactEmail,
+        }));
+        setEditForm(parsed);
       }
     } catch (e) {
       console.error("로컬스토리지 로드 실패:", e);
@@ -112,28 +123,34 @@ export default function ProfilePage() {
       setIsLoaded(true);
     }
 
-    // Firestore 'users/anonymous/links' 실시간 동기화
+    // Firestore 'users/anonymous/links'에서 createdAt 기준 최신순 실시간 구독
+    setIsLinksLoading(true);
     let unsubscribe: (() => void) | undefined;
     try {
       unsubscribe = subscribeLinksFromFirestore(
         (firestoreLinks) => {
-          if (firestoreLinks && firestoreLinks.length > 0) {
-            setProfile((prev) => {
-              const updated = { ...prev, links: firestoreLinks };
-              try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-              } catch {}
-              return updated;
-            });
-            setEditForm((prev) => ({ ...prev, links: firestoreLinks }));
-          }
+          // Firestore에서 불러온 링크 목록(createdAt 기준 최신순 정렬) 반영
+          setProfile((prev) => {
+            const updated = { ...prev, links: firestoreLinks };
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+          setEditForm((prev) => ({ ...prev, links: firestoreLinks }));
+          setIsLinksLoading(false);
+          setIsUpdating(false);
         },
         (err) => {
-          console.warn("Firestore 실시간 연동 에러 (로컬 캐시 유지):", err);
+          console.warn("Firestore 실시간 연동 에러:", err);
+          setIsLinksLoading(false);
+          setIsUpdating(false);
         }
       );
     } catch (err) {
       console.warn("Firestore 구독 초기화 실패:", err);
+      setIsLinksLoading(false);
+      setIsUpdating(false);
     }
 
     return () => {
@@ -150,7 +167,30 @@ export default function ProfilePage() {
     }, 2400);
   };
 
-  // 2. 로컬스토리지에 저장하기
+  // 2. 수동 새로고침 (최신 목록 갱신)
+  const handleRefresh = async () => {
+    if (isUpdating || isLinksLoading) return;
+    try {
+      setIsUpdating(true);
+      const latestLinks = await getLinksFromFirestore();
+      setProfile((prev) => {
+        const updated = { ...prev, links: latestLinks };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+      setEditForm((prev) => ({ ...prev, links: latestLinks }));
+      showToast("최신 링크 목록으로 갱신되었어요 ✨");
+    } catch (e) {
+      console.error("새로고침 실패:", e);
+      showToast("목록 갱신에 실패했어요");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // 3. 로컬스토리지에 저장하기
   const handleSaveProfile = (updated: ProfileData) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -163,9 +203,10 @@ export default function ProfilePage() {
     }
   };
 
-  // 3. 다이얼로그에서 단일 링크 추가 시 Firestore(users/anonymous/links)에 저장
+  // 4. 다이얼로그에서 단일 링크 추가 시 Firestore(users/anonymous/links)에 저장
   const handleAddNewLink = async (newLink: LinkItem) => {
     try {
+      setIsUpdating(true);
       const savedLink = await addLinkToFirestore(newLink);
 
       setProfile((prev) => {
@@ -191,6 +232,11 @@ export default function ProfilePage() {
       console.error("Firestore 링크 추가 실패:", e);
       showToast("Firestore 링크 저장에 실패했어요");
       throw e;
+    } finally {
+      // 실시간 리스너가 최신 순서를 확정지을 때까지 짧게 로딩 인디케이터 유지
+      setTimeout(() => {
+        setIsUpdating(false);
+      }, 500);
     }
   };
 
@@ -357,10 +403,30 @@ export default function ProfilePage() {
         {/* Links Section */}
         <section className="overflow-hidden rounded-3xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <div className="flex items-center justify-between px-5 pt-5 pb-2">
-            <h2 className="text-[17px] font-bold text-[#191F28]">
-              추천 링크
-            </h2>
             <div className="flex items-center gap-2">
+              <h2 className="text-[17px] font-bold text-[#191F28]">
+                추천 링크
+              </h2>
+              {isUpdating && !isLinksLoading && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2 py-0.5 text-[11px] font-semibold text-[#3182F6] animate-in fade-in duration-200">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>동기화 중...</span>
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isUpdating || isLinksLoading}
+                aria-label="목록 새로고침"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[#8B95A1] transition hover:bg-[#F2F4F6] hover:text-[#4E5968] active:scale-95 disabled:opacity-40"
+                title="목록 새로고침"
+              >
+                <RotateCw className={`h-3.5 w-3.5 ${isUpdating ? "animate-spin text-[#3182F6]" : ""}`} />
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsAddLinkDialogOpen(true)}
@@ -369,9 +435,10 @@ export default function ProfilePage() {
                 <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
                 <span>링크 추가</span>
               </button>
+
               <Link
                 href="/links"
-                className="flex items-center gap-0.5 text-[13px] font-semibold text-[#8B95A1] hover:text-[#3182F6] transition-colors"
+                className="flex items-center gap-0.5 text-[13px] font-semibold text-[#8B95A1] hover:text-[#3182F6] transition-colors ml-0.5"
               >
                 <span>전체보기</span>
                 <ChevronRight className="h-4 w-4" />
@@ -379,52 +446,75 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="divide-y divide-[#F2F4F6]">
-            {profile.links.map((link) => (
-              <a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-between px-5 py-4 transition hover:bg-[#F9FAFB] active:bg-[#F2F4F6]"
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-3.5">
-                  {/* Icon Avatar */}
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F2F4F6] group-hover:bg-white transition-colors shadow-none group-hover:shadow-sm">
-                    {getLinkIcon(link.iconType)}
-                  </div>
+          {/* 갱신/업데이트 진행 시 상단에 표시되는 얇은 인디케이터 바 */}
+          {isUpdating && !isLinksLoading && (
+            <div className="h-0.5 w-full bg-[#E8F3FF] overflow-hidden">
+              <div className="h-full w-full bg-[#3182F6] animate-pulse" />
+            </div>
+          )}
 
-                  {/* Text Stack */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-[15px] font-semibold text-[#191F28]">
-                        {link.title}
-                      </span>
-                      {link.badge && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                            link.badgeColor || "bg-[#E8F3FF] text-[#3182F6]"
-                          }`}
-                        >
-                          {link.badge}
+          <div className="divide-y divide-[#F2F4F6]">
+            {isLinksLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Loader2 className="h-6 w-6 animate-spin text-[#3182F6]" />
+                <p className="mt-2 text-[13px] font-medium text-[#8B95A1]">
+                  Firestore에서 링크를 불러오는 중...
+                </p>
+              </div>
+            ) : profile.links.length > 0 ? (
+              profile.links.map((link) => (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center justify-between px-5 py-4 transition hover:bg-[#F9FAFB] active:bg-[#F2F4F6]"
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-3.5">
+                    {/* Icon Avatar */}
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F2F4F6] group-hover:bg-white transition-colors shadow-none group-hover:shadow-sm">
+                      {getLinkIcon(link.iconType)}
+                    </div>
+
+                    {/* Text Stack */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-[15px] font-semibold text-[#191F28]">
+                          {link.title}
                         </span>
+                        {link.badge && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              link.badgeColor || "bg-[#E8F3FF] text-[#3182F6]"
+                            }`}
+                          >
+                            {link.badge}
+                          </span>
+                        )}
+                      </div>
+                      {link.subtitle && (
+                        <p className="mt-0.5 truncate text-[13px] text-[#8B95A1]">
+                          {link.subtitle}
+                        </p>
                       )}
                     </div>
-                    {link.subtitle && (
-                      <p className="mt-0.5 truncate text-[13px] text-[#8B95A1]">
-                        {link.subtitle}
-                      </p>
-                    )}
                   </div>
-                </div>
 
-                <ChevronRight className="ml-2 h-5 w-5 shrink-0 text-[#B0B8C1] transition group-hover:translate-x-0.5 group-hover:text-[#4E5968]" />
-              </a>
-            ))}
-
-            {profile.links.length === 0 && (
-              <div className="py-10 text-center text-[14px] text-[#8B95A1]">
-                등록된 링크가 없어요. 상단 [편집] 버튼을 눌러 추가해보세요!
+                  <ChevronRight className="ml-2 h-5 w-5 shrink-0 text-[#B0B8C1] transition group-hover:translate-x-0.5 group-hover:text-[#4E5968]" />
+                </a>
+              ))
+            ) : (
+              <div className="py-12 text-center text-[14px] text-[#8B95A1]">
+                <p className="font-medium text-[#4E5968]">등록된 링크가 없어요.</p>
+                <p className="mt-1 text-[13px]">상단의 [링크 추가] 버튼을 눌러 새 링크를 등록해보세요!</p>
+                <button
+                  type="button"
+                  onClick={() => setIsAddLinkDialogOpen(true)}
+                  className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#E8F3FF] px-3 py-1.5 text-[12px] font-semibold text-[#3182F6] hover:bg-[#d6e9ff]"
+                >
+                  <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+                  <span>새 링크 추가하기</span>
+                </button>
               </div>
             )}
           </div>

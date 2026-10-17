@@ -11,6 +11,8 @@ import {
   Layers,
   Filter,
   Plus,
+  Loader2,
+  RotateCw,
 } from "lucide-react";
 import { LinkItem, DEFAULT_PROFILE, ProfileData } from "@/types/profile";
 import { DUMMY_LINKS } from "../../../data/links";
@@ -24,6 +26,7 @@ import { CategoryFilterTabs } from "@/components/CategoryFilterTabs";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
 import {
   addLinkToFirestore,
+  getLinksFromFirestore,
   subscribeLinksFromFirestore,
 } from "@/lib/firestoreLinks";
 
@@ -47,6 +50,8 @@ export default function LinksClient() {
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>("all");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLinksLoading, setIsLinksLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -54,51 +59,50 @@ export default function LinksClient() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed: ProfileData = JSON.parse(saved);
-        queueMicrotask(() => {
-          setProfile(parsed);
-          if (parsed.links && parsed.links.length > 0) {
-            setLinks(parsed.links);
-          } else {
-            setLinks(DUMMY_LINKS);
-          }
-        });
-      } else {
-        queueMicrotask(() => {
-          setProfile(DEFAULT_PROFILE);
-          setLinks(DUMMY_LINKS);
-        });
+        setProfile((prev) => ({
+          ...prev,
+          displayName: parsed.displayName ?? prev.displayName,
+          username: parsed.username ?? prev.username,
+          badgeText: parsed.badgeText ?? prev.badgeText,
+          avatarUrl: parsed.avatarUrl ?? prev.avatarUrl,
+          bio: parsed.bio ?? prev.bio,
+          socialLinks: parsed.socialLinks ?? prev.socialLinks,
+          contactEmail: parsed.contactEmail ?? prev.contactEmail,
+        }));
       }
     } catch (e) {
       console.error("데이터 로드 실패:", e);
-      queueMicrotask(() => {
-        setLinks(DUMMY_LINKS);
-      });
     } finally {
       setIsLoaded(true);
     }
 
-    // Firestore 'users/anonymous/links' 실시간 동기화
+    // Firestore 'users/anonymous/links' 실시간 동기화 (createdAt 기준 최신순 정렬)
+    setIsLinksLoading(true);
     let unsubscribe: (() => void) | undefined;
     try {
       unsubscribe = subscribeLinksFromFirestore(
         (firestoreLinks) => {
-          if (firestoreLinks && firestoreLinks.length > 0) {
-            setLinks(firestoreLinks);
-            setProfile((prev) => {
-              const updated = { ...prev, links: firestoreLinks };
-              try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-              } catch {}
-              return updated;
-            });
-          }
+          setLinks(firestoreLinks);
+          setProfile((prev) => {
+            const updated = { ...prev, links: firestoreLinks };
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+          setIsLinksLoading(false);
+          setIsUpdating(false);
         },
         (err) => {
-          console.warn("Firestore 실시간 연동 에러 (로컬 캐시 유지):", err);
+          console.warn("Firestore 실시간 연동 에러:", err);
+          setIsLinksLoading(false);
+          setIsUpdating(false);
         }
       );
     } catch (err) {
       console.warn("Firestore 구독 초기화 실패:", err);
+      setIsLinksLoading(false);
+      setIsUpdating(false);
     }
 
     return () => {
@@ -108,8 +112,32 @@ export default function LinksClient() {
     };
   }, []);
 
+  // 수동 새로고침
+  const handleRefresh = async () => {
+    if (isUpdating || isLinksLoading) return;
+    try {
+      setIsUpdating(true);
+      const latestLinks = await getLinksFromFirestore();
+      setLinks(latestLinks);
+      setProfile((prev) => {
+        const updated = { ...prev, links: latestLinks };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+      showToast("최신 링크 목록으로 갱신되었어요 ✨");
+    } catch (e) {
+      console.error("새로고침 실패:", e);
+      showToast("목록 갱신에 실패했어요");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleAddLink = async (newLink: LinkItem) => {
     try {
+      setIsUpdating(true);
       const savedLink = await addLinkToFirestore(newLink);
 
       setLinks((prev) => {
@@ -133,6 +161,10 @@ export default function LinksClient() {
       console.error("Firestore 링크 저장 실패:", e);
       showToast("Firestore 링크 추가에 실패했어요");
       throw e;
+    } finally {
+      setTimeout(() => {
+        setIsUpdating(false);
+      }, 500);
     }
   };
 
@@ -330,43 +362,78 @@ export default function LinksClient() {
               <Badge variant="secondary" className="rounded-full bg-[#E8F3FF] px-2 py-0.5 text-[11px] font-bold text-[#3182F6]">
                 {filteredLinks.length}
               </Badge>
+              {isUpdating && !isLinksLoading && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2 py-0.5 text-[11px] font-semibold text-[#3182F6] animate-in fade-in duration-200">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>동기화 중...</span>
+                </span>
+              )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isUpdating || isLinksLoading}
+                aria-label="목록 새로고침"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[#8B95A1] transition hover:bg-[#F2F4F6] hover:text-[#4E5968] active:scale-95 disabled:opacity-40"
+                title="목록 새로고침"
+              >
+                <RotateCw className={`h-3.5 w-3.5 ${isUpdating ? "animate-spin text-[#3182F6]" : ""}`} />
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsAddLinkDialogOpen(true)}
-                className="flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2.5 py-1 text-[12px] font-semibold text-[#3182F6] hover:bg-[#d6e9ff] transition-colors"
+                className="flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2.5 py-1 text-[12px] font-semibold text-[#3182F6] hover:bg-[#d6e9ff] transition-colors active:scale-95"
               >
                 <Plus className="h-3 w-3 stroke-[2.5]" />
                 <span>링크 추가</span>
               </button>
               {searchQuery && (
-                <span className="text-[12px] text-[#8B95A1]">
+                <span className="text-[12px] text-[#8B95A1] ml-1">
                   검색결과
                 </span>
               )}
             </div>
           </div>
 
-          <div className="divide-y divide-[#F2F4F6]">
-            {filteredLinks.map((link) => (
-              <LinkCardItem
-                key={link.id}
-                link={link}
-                onCopy={handleCopyLink}
-              />
-            ))}
+          {/* 갱신/업데이트 진행 시 상단에 표시되는 얇은 인디케이터 바 */}
+          {isUpdating && !isLinksLoading && (
+            <div className="h-0.5 w-full bg-[#E8F3FF] overflow-hidden">
+              <div className="h-full w-full bg-[#3182F6] animate-pulse" />
+            </div>
+          )}
 
-            {filteredLinks.length === 0 && (
+          <div className="divide-y divide-[#F2F4F6]">
+            {isLinksLoading ? (
+              <div className="py-14 flex flex-col items-center justify-center text-center">
+                <Loader2 className="h-6 w-6 animate-spin text-[#3182F6]" />
+                <p className="mt-2 text-[13px] font-medium text-[#8B95A1]">
+                  Firestore에서 링크를 불러오는 중...
+                </p>
+              </div>
+            ) : filteredLinks.length > 0 ? (
+              filteredLinks.map((link) => (
+                <LinkCardItem
+                  key={link.id}
+                  link={link}
+                  onCopy={handleCopyLink}
+                />
+              ))
+            ) : (
               <div className="py-14 text-center px-4">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F2F4F6] text-[#8B95A1] mb-3">
                   <Filter className="h-5 w-5" />
                 </div>
                 <p className="text-[15px] font-semibold text-[#191F28]">
-                  일치하는 링크가 없어요
+                  {searchQuery || selectedCategory !== "all"
+                    ? "일치하는 링크가 없어요"
+                    : "등록된 링크가 아직 없어요"}
                 </p>
                 <p className="mt-1 text-[13px] text-[#8B95A1]">
-                  검색어를 변경하거나 필터를 초기화해보세요.
+                  {searchQuery || selectedCategory !== "all"
+                    ? "검색어를 변경하거나 필터를 초기화해보세요."
+                    : "우측 상단 [+ 추가] 버튼으로 첫 번째 링크를 등록해보세요."}
                 </p>
                 {(searchQuery || selectedCategory !== "all") && (
                   <Button
