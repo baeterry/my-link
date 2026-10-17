@@ -22,6 +22,10 @@ import {
 } from "lucide-react";
 import { ProfileData, DEFAULT_PROFILE, LinkItem } from "@/types/profile";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
+import {
+  addLinkToFirestore,
+  subscribeLinksFromFirestore,
+} from "@/lib/firestoreLinks";
 
 const STORAGE_KEY = "mylink_profile_data";
 
@@ -89,13 +93,12 @@ export default function ProfilePage() {
   // 링크 추가 다이얼로그 상태
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
 
-  // 1. 로컬스토리지에서 프로필 불러오기 (Mount 시)
+  // 1. 로컬스토리지에서 기본 프로필 불러오기 및 Firestore 실시간 동기화
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Defer state update to next microtask/tick to prevent synchronous setState inside effect warning
         queueMicrotask(() => {
           setProfile(parsed);
           setEditForm(parsed);
@@ -108,6 +111,36 @@ export default function ProfilePage() {
     } finally {
       setIsLoaded(true);
     }
+
+    // Firestore 'users/anonymous/links' 실시간 동기화
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = subscribeLinksFromFirestore(
+        (firestoreLinks) => {
+          if (firestoreLinks && firestoreLinks.length > 0) {
+            setProfile((prev) => {
+              const updated = { ...prev, links: firestoreLinks };
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
+            setEditForm((prev) => ({ ...prev, links: firestoreLinks }));
+          }
+        },
+        (err) => {
+          console.warn("Firestore 실시간 연동 에러 (로컬 캐시 유지):", err);
+        }
+      );
+    } catch (err) {
+      console.warn("Firestore 구독 초기화 실패:", err);
+    }
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const showToast = (message: string) => {
@@ -130,20 +163,34 @@ export default function ProfilePage() {
     }
   };
 
-  // 3. 다이얼로그에서 단일 링크 추가 시 로컬 상태 및 스토리지에 즉시 반영
-  const handleAddNewLink = (newLink: LinkItem) => {
-    const updatedProfile: ProfileData = {
-      ...profile,
-      links: [newLink, ...profile.links],
-    };
+  // 3. 다이얼로그에서 단일 링크 추가 시 Firestore(users/anonymous/links)에 저장
+  const handleAddNewLink = async (newLink: LinkItem) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
-      setProfile(updatedProfile);
-      setEditForm(updatedProfile);
-      showToast("새 링크가 성공적으로 추가되었어요 🚀");
-    } catch (e) {
-      console.error("링크 추가 실패:", e);
-      showToast("링크 추가에 실패했어요");
+      const savedLink = await addLinkToFirestore(newLink);
+
+      setProfile((prev) => {
+        const exists = prev.links.some((l) => l.id === savedLink.id);
+        const nextLinks = exists ? prev.links : [savedLink, ...prev.links];
+        const updatedProfile: ProfileData = {
+          ...prev,
+          links: nextLinks,
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
+        } catch {}
+        return updatedProfile;
+      });
+
+      setEditForm((prev) => ({
+        ...prev,
+        links: [savedLink, ...prev.links.filter((l) => l.id !== savedLink.id)],
+      }));
+
+      showToast("새 링크가 Firestore에 성공적으로 저장되었어요 🚀");
+    } catch (e: any) {
+      console.error("Firestore 링크 추가 실패:", e);
+      showToast("Firestore 링크 저장에 실패했어요");
+      throw e;
     }
   };
 
@@ -386,7 +433,7 @@ export default function ProfilePage() {
         {/* Footer */}
         <footer className="mt-2 py-6 text-center text-[12px] text-[#8B95A1]">
           <p className="font-medium text-[#4E5968]">마이링크 (MyLink)</p>
-          <p className="mt-1">로컬스토리지 기반 프로필 시연 데모</p>
+          <p className="mt-1">Firebase Firestore 기반 링크 관리</p>
         </footer>
       </div>
 

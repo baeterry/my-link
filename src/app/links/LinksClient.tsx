@@ -22,6 +22,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LinkCardItem } from "@/components/LinkCardItem";
 import { CategoryFilterTabs } from "@/components/CategoryFilterTabs";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
+import {
+  addLinkToFirestore,
+  subscribeLinksFromFirestore,
+} from "@/lib/firestoreLinks";
 
 const STORAGE_KEY = "mylink_profile_data";
 
@@ -72,22 +76,63 @@ export default function LinksClient() {
     } finally {
       setIsLoaded(true);
     }
+
+    // Firestore 'users/anonymous/links' 실시간 동기화
+    let unsubscribe: (() => void) | undefined;
+    try {
+      unsubscribe = subscribeLinksFromFirestore(
+        (firestoreLinks) => {
+          if (firestoreLinks && firestoreLinks.length > 0) {
+            setLinks(firestoreLinks);
+            setProfile((prev) => {
+              const updated = { ...prev, links: firestoreLinks };
+              try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
+          }
+        },
+        (err) => {
+          console.warn("Firestore 실시간 연동 에러 (로컬 캐시 유지):", err);
+        }
+      );
+    } catch (err) {
+      console.warn("Firestore 구독 초기화 실패:", err);
+    }
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
-  const handleAddLink = (newLink: LinkItem) => {
-    const updatedLinks = [newLink, ...links];
-    const updatedProfile: ProfileData = {
-      ...profile,
-      links: updatedLinks,
-    };
+  const handleAddLink = async (newLink: LinkItem) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
-      setLinks(updatedLinks);
-      setProfile(updatedProfile);
-      showToast("새 링크가 성공적으로 추가되었어요 🚀");
-    } catch (e) {
-      console.error("링크 저장 실패:", e);
-      showToast("링크 추가에 실패했어요");
+      const savedLink = await addLinkToFirestore(newLink);
+
+      setLinks((prev) => {
+        const exists = prev.some((l) => l.id === savedLink.id);
+        const updated = exists ? prev : [savedLink, ...prev];
+        return updated;
+      });
+
+      setProfile((prev) => {
+        const exists = prev.links.some((l) => l.id === savedLink.id);
+        const updatedLinks = exists ? prev.links : [savedLink, ...prev.links];
+        const updatedProfile = { ...prev, links: updatedLinks };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
+        } catch {}
+        return updatedProfile;
+      });
+
+      showToast("새 링크가 Firestore에 성공적으로 저장되었어요 🚀");
+    } catch (e: any) {
+      console.error("Firestore 링크 저장 실패:", e);
+      showToast("Firestore 링크 추가에 실패했어요");
+      throw e;
     }
   };
 

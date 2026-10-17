@@ -22,12 +22,13 @@ import {
   Plus,
   AlertCircle,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 
 interface AddLinkDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddLink: (newLink: LinkItem) => void;
+  onAddLink: (newLink: LinkItem) => Promise<void> | void;
   existingUrls?: string[];
 }
 
@@ -96,6 +97,8 @@ export function AddLinkDialog({
     useState<NonNullable<LinkItem["iconType"]>>("link");
   const [badge, setBadge] = useState("");
   const [badgeColor, setBadgeColor] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // 필드 터치(포커스 해제) 여부 추적
   const [touched, setTouched] = useState({
@@ -111,6 +114,7 @@ export function AddLinkDialog({
     setBadge("");
     setBadgeColor("");
     setTouched({ title: false, url: false });
+    setSubmitError(null);
   };
 
   const handleCategorySelect = (category: (typeof CATEGORY_OPTIONS)[0]) => {
@@ -180,10 +184,11 @@ export function AddLinkDialog({
   const urlError = touched.url ? getUrlError(url) : null;
   const isUrlValid = url.trim().length > 0 && !getUrlError(url);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setTouched({ title: true, url: true });
+    setSubmitError(null);
 
     const currentTitleError = getTitleError(title);
     const currentUrlError = getUrlError(url);
@@ -204,9 +209,19 @@ export function AddLinkDialog({
         : undefined,
     };
 
-    onAddLink(newLink);
-    resetForm();
-    onOpenChange(false);
+    try {
+      setIsSubmitting(true);
+      await onAddLink(newLink);
+      resetForm();
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error("링크 추가 실패:", err);
+      setSubmitError(
+        err?.message || "Firestore 저장 중 오류가 발생했습니다. 다시 시도해 주세요."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -228,9 +243,16 @@ export function AddLinkDialog({
             </DialogTitle>
           </div>
           <DialogDescription className="text-[13px] text-[#8B95A1]">
-            프로필과 전체 목록에 노출될 새로운 링크를 로컬 상태에 등록합니다.
+            프로필과 전체 목록에 노출될 새로운 링크를 Firestore에 저장합니다.
           </DialogDescription>
         </DialogHeader>
+
+        {submitError && (
+          <div className="mt-2 flex items-start gap-2 rounded-xl bg-[#FFF0F0] p-3 text-[12px] font-medium text-[#F04452]">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{submitError}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="mt-2 space-y-4">
           {/* 1. 카테고리 (아이콘 타입) 선택 */}
@@ -436,6 +458,7 @@ export function AddLinkDialog({
             <Button
               type="button"
               variant="outline"
+              disabled={isSubmitting}
               onClick={() => {
                 resetForm();
                 onOpenChange(false);
@@ -446,10 +469,17 @@ export function AddLinkDialog({
             </Button>
             <Button
               type="submit"
-              disabled={(touched.title && !isTitleValid) || (touched.url && !isUrlValid)}
+              disabled={isSubmitting || (touched.title && !isTitleValid) || (touched.url && !isUrlValid)}
               className="flex-1 rounded-xl bg-[#3182F6] text-[14px] font-semibold text-white shadow-xs hover:bg-[#1B64DA] active:scale-95 disabled:opacity-50 disabled:pointer-events-none h-11 transition-all"
             >
-              추가하기
+              {isSubmitting ? (
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>저장 중...</span>
+                </span>
+              ) : (
+                "추가하기"
+              )}
             </Button>
           </DialogFooter>
         </form>
