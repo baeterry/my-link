@@ -228,6 +228,7 @@ export function AddLinkDialog({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        if (isSubmitting) return;
         if (!nextOpen) resetForm();
         onOpenChange(nextOpen);
       }}
@@ -469,16 +470,19 @@ export function AddLinkDialog({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || (touched.title && !isTitleValid) || (touched.url && !isUrlValid)}
-              className="flex-1 rounded-xl bg-[#3182F6] text-[14px] font-semibold text-white shadow-xs hover:bg-[#1B64DA] active:scale-95 disabled:opacity-50 disabled:pointer-events-none h-11 transition-all"
+              disabled={isSubmitting}
+              className="flex-1 rounded-xl bg-[#3182F6] text-[14px] font-semibold text-white shadow-xs hover:bg-[#1B64DA] active:scale-95 disabled:opacity-70 h-11 transition-all"
             >
               {isSubmitting ? (
-                <span className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>저장 중...</span>
                 </span>
               ) : (
-                "추가하기"
+                <span className="inline-flex items-center gap-1.5">
+                  <Plus className="h-4 w-4 stroke-[2.5]" />
+                  <span>추가하기</span>
+                </span>
               )}
             </Button>
           </DialogFooter>
