@@ -1,30 +1,23 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Search,
   ArrowLeft,
-  Share2,
-  CheckCircle2,
   Sparkles,
-  Layers,
-  Filter,
   Plus,
   Loader2,
   RotateCw,
+  Link as LinkIcon,
+  ShieldCheck,
 } from "lucide-react";
-import { LinkItem, DEFAULT_PROFILE, ProfileData } from "@/types/profile";
-import { DUMMY_LINKS } from "../../../data/links";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { LinkItem } from "@/types/profile";
 import { LinkCardItem } from "@/components/LinkCardItem";
-import { CategoryFilterTabs } from "@/components/CategoryFilterTabs";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
 import { DeleteLinkDialog } from "@/components/DeleteLinkDialog";
+import { Header, GoogleIcon } from "@/components/Header";
+import { useAuth } from "@/context/AuthContext";
 import {
   addLinkToFirestore,
   getLinksFromFirestore,
@@ -32,8 +25,6 @@ import {
   updateLinkInFirestore,
   deleteLinkFromFirestore,
 } from "@/lib/firestoreLinks";
-
-const STORAGE_KEY = "mylink_profile_data";
 
 type FilterCategory = "all" | "video" | "shopping" | "message" | "globe" | "link";
 
@@ -47,250 +38,76 @@ const CATEGORY_TABS: { key: FilterCategory; label: string }[] = [
 ];
 
 export default function LinksClient() {
+  const { user, userProfile, loading: authLoading, signInWithGoogle } = useAuth();
+
   const [links, setLinks] = useState<LinkItem[]>([]);
-  const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>("all");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isLinksLoading, setIsLinksLoading] = useState(true);
+  const [isLinksLoading, setIsLinksLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // 모달 다이얼로그 상태
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [deletingLink, setDeletingLink] = useState<LinkItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed: ProfileData = JSON.parse(saved);
-        setProfile((prev) => ({
-          ...prev,
-          displayName: parsed.displayName ?? prev.displayName,
-          username: parsed.username ?? prev.username,
-          badgeText: parsed.badgeText ?? prev.badgeText,
-          avatarUrl: parsed.avatarUrl ?? prev.avatarUrl,
-          bio: parsed.bio ?? prev.bio,
-          socialLinks: parsed.socialLinks ?? prev.socialLinks,
-          contactEmail: parsed.contactEmail ?? prev.contactEmail,
-        }));
-      }
-    } catch (e) {
-      console.error("데이터 로드 실패:", e);
-    } finally {
-      setIsLoaded(true);
-    }
-
-    // Firestore 'users/anonymous/links' 실시간 동기화 (createdAt 기준 최신순 정렬)
-    setIsLinksLoading(true);
-    let unsubscribe: (() => void) | undefined;
-    try {
-      unsubscribe = subscribeLinksFromFirestore(
-        (firestoreLinks) => {
-          setLinks(firestoreLinks);
-          setProfile((prev) => {
-            const updated = { ...prev, links: firestoreLinks };
-            try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-            } catch {}
-            return updated;
-          });
-          setIsLinksLoading(false);
-          setIsUpdating(false);
-        },
-        (err) => {
-          console.warn("Firestore 실시간 연동 에러:", err);
-          setIsLinksLoading(false);
-          setIsUpdating(false);
-        }
-      );
-    } catch (err) {
-      console.warn("Firestore 구독 초기화 실패:", err);
-      setIsLinksLoading(false);
-      setIsUpdating(false);
-    }
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, []);
-
-  // 수동 새로고침
-  const handleRefresh = async () => {
-    if (isUpdating || isLinksLoading) return;
-    try {
-      setIsUpdating(true);
-      const latestLinks = await getLinksFromFirestore();
-      setLinks(latestLinks);
-      setProfile((prev) => {
-        const updated = { ...prev, links: latestLinks };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
-      showToast("최신 링크 목록으로 갱신되었어요 ✨");
-    } catch (e) {
-      console.error("새로고침 실패:", e);
-      showToast("목록 갱신에 실패했어요");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleAddLink = async (newLink: LinkItem) => {
-    try {
-      setIsUpdating(true);
-      const savedLink = await addLinkToFirestore(newLink);
-
-      setLinks((prev) => {
-        const exists = prev.some((l) => l.id === savedLink.id);
-        const updated = exists ? prev : [savedLink, ...prev];
-        return updated;
-      });
-
-      setProfile((prev) => {
-        const exists = prev.links.some((l) => l.id === savedLink.id);
-        const updatedLinks = exists ? prev.links : [savedLink, ...prev.links];
-        const updatedProfile = { ...prev, links: updatedLinks };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
-        } catch {}
-        return updatedProfile;
-      });
-
-      showToast("새 링크가 Firestore에 성공적으로 저장되었어요 🚀");
-    } catch (e: any) {
-      console.error("Firestore 링크 저장 실패:", e);
-      showToast("Firestore 링크 추가에 실패했어요");
-      throw e;
-    } finally {
-      setTimeout(() => {
-        setIsUpdating(false);
-      }, 500);
-    }
-  };
-
-  // Firestore 링크 수정 핸들러 (인라인 편집)
-  const handleUpdateLink = async (
-    id: string,
-    updatedData: Partial<Omit<LinkItem, "id">>
-  ) => {
-    try {
-      setIsUpdating(true);
-      await updateLinkInFirestore(id, updatedData);
-
-      setLinks((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, ...updatedData, updatedAtMs: Date.now() } : item
-        )
-      );
-
-      setProfile((prev) => {
-        const updatedLinks = prev.links.map((item) =>
-          item.id === id ? { ...item, ...updatedData, updatedAtMs: Date.now() } : item
-        );
-        const updatedProfile = { ...prev, links: updatedLinks };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
-        } catch {}
-        return updatedProfile;
-      });
-
-      showToast("링크가 성공적으로 수정되었어요 ✨");
-    } catch (err: any) {
-      console.error("Firestore 링크 수정 실패:", err);
-      showToast("링크 수정에 실패했어요");
-      throw err;
-    } finally {
-      setTimeout(() => {
-        setIsUpdating(false);
-      }, 500);
-    }
-  };
-
-  // Firestore 링크 삭제 확인 핸들러
-  const handleDeleteLinkConfirm = async (id: string) => {
-    try {
-      setIsUpdating(true);
-      await deleteLinkFromFirestore(id);
-
-      setLinks((prev) => prev.filter((item) => item.id !== id));
-      setProfile((prev) => {
-        const updatedLinks = prev.links.filter((item) => item.id !== id);
-        const updatedProfile = { ...prev, links: updatedLinks };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
-        } catch {}
-        return updatedProfile;
-      });
-
-      showToast("링크가 삭제되었어요 🗑️");
-    } catch (err: any) {
-      console.error("Firestore 링크 삭제 실패:", err);
-      showToast("링크 삭제에 실패했어요");
-      throw err;
-    } finally {
-      setTimeout(() => {
-        setIsUpdating(false);
-      }, 500);
-    }
-  };
 
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => {
       setToastMessage(null);
-    }, 2200);
+    }, 2400);
   };
 
-  const handleCopyLink = (url: string, title: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-      showToast(`'${title}' 링크 주소가 복사되었어요 📋`);
+  // Firestore user/{user.uid}/links 실시간 동기화
+  useEffect(() => {
+    if (!user) {
+      return;
     }
-  };
 
-  const handleShare = () => {
-    if (typeof window !== "undefined") {
-      if (navigator.share) {
-        navigator
-          .share({
-            title: `${profile.displayName}의 전체 링크 목록 - 마이링크`,
-            text: `${profile.displayName}님의 추천 및 공식 링크 모음입니다.`,
-            url: window.location.href,
-          })
-          .catch(() => {});
-      } else {
-        navigator.clipboard.writeText(window.location.href);
-        showToast("페이지 링크가 복사되었어요 ✨");
+    const unsubscribe = subscribeLinksFromFirestore(
+      user.uid,
+      (firestoreLinks) => {
+        setLinks(firestoreLinks);
+        setIsLinksLoading(false);
+        setIsUpdating(false);
+      },
+      (err) => {
+        console.warn("Firestore 실시간 연동 에러:", err);
+        setIsLinksLoading(false);
+        setIsUpdating(false);
       }
-    }
-  };
+    );
 
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
+
+  // 검색 및 카테고리 필터링
   const filteredLinks = useMemo(() => {
     return links.filter((link) => {
-      if (selectedCategory !== "all") {
-        if (selectedCategory === "link") {
-          if (link.iconType && link.iconType !== "link") return false;
-        } else {
-          if (link.iconType !== selectedCategory) return false;
-        }
-      }
+      // 카테고리 필터
+      const matchCategory =
+        selectedCategory === "all" ||
+        (selectedCategory === "link"
+          ? !link.iconType || link.iconType === "link"
+          : link.iconType === selectedCategory);
 
-      if (!searchQuery.trim()) return true;
+      // 검색어 필터
       const q = searchQuery.toLowerCase().trim();
-      const matchTitle = link.title?.toLowerCase().includes(q);
-      const matchSubtitle = link.subtitle?.toLowerCase().includes(q);
-      const matchBadge = link.badge?.toLowerCase().includes(q);
-      const matchUrl = link.url?.toLowerCase().includes(q);
+      const matchSearch =
+        !q ||
+        link.title.toLowerCase().includes(q) ||
+        (link.subtitle && link.subtitle.toLowerCase().includes(q)) ||
+        link.url.toLowerCase().includes(q) ||
+        (link.badge && link.badge.toLowerCase().includes(q));
 
-      return matchTitle || matchSubtitle || matchBadge || matchUrl;
+      return matchCategory && matchSearch;
     });
-  }, [links, searchQuery, selectedCategory]);
+  }, [links, selectedCategory, searchQuery]);
 
+  // 카테고리별 개수 카운트
   const categoryCounts = useMemo(() => {
     const counts: Record<FilterCategory, number> = {
       all: links.length,
@@ -300,287 +117,371 @@ export default function LinksClient() {
       globe: 0,
       link: 0,
     };
-
-    links.forEach((link) => {
-      if (link.iconType === "video") counts.video++;
-      else if (link.iconType === "shopping") counts.shopping++;
-      else if (link.iconType === "message") counts.message++;
-      else if (link.iconType === "globe") counts.globe++;
-      else counts.link++;
+    links.forEach((l) => {
+      const type = (l.iconType || "link") as FilterCategory;
+      if (counts[type] !== undefined) {
+        counts[type]++;
+      } else {
+        counts.link++;
+      }
     });
-
     return counts;
   }, [links]);
 
-  if (!isLoaded) {
+  const handleCopy = (url: string, title: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      showToast(`'${title}' 링크 주소가 복사되었어요 📋`);
+    }
+  };
+
+  const handleShare = () => {
+    if (typeof window !== "undefined") {
+      const shareTitle = userProfile?.displayName || user?.displayName || "마이링크";
+      if (navigator.share) {
+        navigator
+          .share({
+            title: `${shareTitle} - 전체 링크 목록`,
+            url: window.location.href,
+          })
+          .catch(() => {});
+      } else {
+        navigator.clipboard.writeText(window.location.href);
+        showToast("링크가 복사되었어요 📋");
+      }
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (!user || isUpdating || isLinksLoading) return;
+    try {
+      setIsUpdating(true);
+      const latestLinks = await getLinksFromFirestore(user.uid);
+      setLinks(latestLinks);
+      showToast("최신 링크 목록으로 갱신되었어요 ✨");
+    } catch (e: unknown) {
+      console.error("새로고침 실패:", e);
+      showToast("목록 갱신에 실패했어요");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleAddNewLink = async (newLink: LinkItem) => {
+    if (!user) {
+      showToast("로그인이 필요합니다.");
+      return;
+    }
+    try {
+      setIsUpdating(true);
+      const savedLink = await addLinkToFirestore(user.uid, newLink);
+      setLinks((prev) => {
+        const exists = prev.some((l) => l.id === savedLink.id);
+        return exists ? prev : [savedLink, ...prev];
+      });
+      showToast("새 링크가 Firestore에 성공적으로 저장되었어요 🚀");
+    } catch (e: unknown) {
+      console.error("Firestore 링크 추가 실패:", e);
+      showToast("Firestore 링크 저장에 실패했어요");
+      throw e;
+    } finally {
+      setTimeout(() => {
+        setIsUpdating(false);
+      }, 500);
+    }
+  };
+
+  const handleUpdateLink = async (id: string, updatedData: Partial<Omit<LinkItem, "id">>) => {
+    if (!user) {
+      showToast("로그인이 필요합니다.");
+      return;
+    }
+    try {
+      setIsUpdating(true);
+      await updateLinkInFirestore(user.uid, id, updatedData);
+      setLinks((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, ...updatedData, updatedAtMs: Date.now() } : l))
+      );
+      showToast("링크가 수정되었어요 ✨");
+    } catch (e: unknown) {
+      console.error("Firestore 링크 수정 실패:", e);
+      showToast("링크 수정에 실패했어요");
+      throw e;
+    } finally {
+      setTimeout(() => {
+        setIsUpdating(false);
+      }, 500);
+    }
+  };
+
+  const handleDeleteLinkConfirm = async (id: string) => {
+    if (!user) {
+      showToast("로그인이 필요합니다.");
+      return;
+    }
+    try {
+      setIsUpdating(true);
+      await deleteLinkFromFirestore(user.uid, id);
+      setLinks((prev) => prev.filter((l) => l.id !== id));
+      showToast("링크가 삭제되었어요 🗑️");
+    } catch (e: unknown) {
+      console.error("Firestore 링크 삭제 실패:", e);
+      showToast("Firestore 링크 삭제에 실패했어요");
+      throw e;
+    } finally {
+      setTimeout(() => {
+        setIsUpdating(false);
+      }, 500);
+    }
+  };
+
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F2F4F6]">
-        <div className="text-[15px] font-medium text-[#8B95A1]">링크 목록을 불러오는 중...</div>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-[#3182F6]" />
+          <div className="text-[15px] font-medium text-[#4E5968]">
+            링크 목록을 준비하는 중이에요...
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#F2F4F6] pb-24 text-[#191F28] antialiased">
-      {/* Top App Bar */}
-      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between bg-[#F2F4F6]/90 px-4 backdrop-blur-md">
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 rounded-full text-[#4E5968] hover:bg-[#E5E8EB] active:scale-95"
-            render={<Link href="/" />}
-            aria-label="홈으로 돌아가기"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <span className="text-[17px] font-bold tracking-tight text-[#191F28]">
-            링크 목록
-          </span>
-        </div>
+    <div className="min-h-screen bg-[#F2F4F6]">
+      <Header onShare={handleShare} showShare={!!user} />
 
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            onClick={() => setIsAddLinkDialogOpen(true)}
-            className="flex items-center gap-1 rounded-full bg-[#3182F6] px-3 h-8 text-[12px] font-semibold text-white shadow-xs hover:bg-[#1B64DA] active:scale-95 transition-all"
-          >
-            <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-            <span>추가</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleShare}
-            aria-label="공유하기"
-            className="h-9 w-9 rounded-full text-[#4E5968] hover:bg-[#E5E8EB] active:scale-95"
-          >
-            <Share2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </header>
-
-      <div className="flex flex-col gap-3.5 px-4 pt-2">
-        {/* Profile Summary Card */}
-        <Card className="rounded-2xl border-none bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] ring-0">
-          <CardContent className="flex items-center justify-between p-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#E8F3FF] text-[#3182F6]">
-                <Layers className="h-5 w-5" />
+      <main className="relative mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-md flex-col pb-24 text-[#191F28] antialiased">
+        {/* 미로그인 상태 안내 화면 */}
+        {!user ? (
+          <div className="flex flex-col gap-5 px-4 pt-8">
+            <section className="overflow-hidden rounded-3xl bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-[#E5E8EB] text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E8F3FF] text-[#3182F6] mx-auto mb-4">
+                <Sparkles className="h-8 w-8" />
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[15px] font-bold text-[#191F28]">
-                    {profile.displayName}
-                  </span>
-                  <Badge variant="secondary" className="rounded-md bg-[#F2F4F6] px-1.5 py-0.5 text-[10px] font-medium text-[#6B7684]">
-                    @{profile.username}
-                  </Badge>
+
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F3FF] px-3 py-1 text-[12px] font-semibold text-[#3182F6] mb-3">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>로그인 필요 안내</span>
+              </div>
+
+              <h1 className="text-[20px] font-bold tracking-tight text-[#191F28] mb-2 leading-snug">
+                로그인 후 나만의 링크를
+                <br />
+                검색하고 관리해보세요
+              </h1>
+
+              <p className="text-[13px] leading-relaxed text-[#6B7684] mb-6">
+                Google 계정으로 로그인하면
+                <br />
+                <code className="text-[#3182F6] bg-[#E8F3FF] px-1 py-0.5 rounded font-mono text-[12px]">
+                  user/&#123;user.uid&#125;/links
+                </code>{" "}
+                개인화 저장소의
+                <br />
+                모든 링크를 카테고리별로 모아보고 검색할 수 있어요.
+              </p>
+
+              <button
+                onClick={() => signInWithGoogle()}
+                type="button"
+                className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#3182F6] px-5 py-3.5 text-[15px] font-bold text-white shadow-md transition hover:bg-[#1B64DA] active:scale-[0.98]"
+              >
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white p-1">
+                  <GoogleIcon className="h-4 w-4" />
                 </div>
-                <p className="text-[12px] text-[#8B95A1] mt-0.5">
-                  총 <strong className="text-[#3182F6] font-semibold">{links.length}개</strong>의 링크가 등록되어 있어요
-                </p>
+                <span>Google 계정으로 시작하기</span>
+              </button>
+
+              <div className="mt-4">
+                <Link
+                  href="/"
+                  className="text-[13px] font-semibold text-[#4E5968] hover:text-[#191F28] underline underline-offset-4"
+                >
+                  마이페이지로 돌아가기
+                </Link>
+              </div>
+            </section>
+          </div>
+        ) : (
+          /* 로그인 상태의 개인화 링크 목록 화면 */
+          <div className="flex flex-col gap-4 px-4 pt-3">
+            {/* 상단 네비게이션 & 타이틀 바 */}
+            <div className="flex items-center justify-between rounded-2xl bg-white px-3.5 py-2.5 shadow-xs border border-[#E5E8EB]">
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#4E5968] hover:bg-[#F2F4F6]"
+                  aria-label="마이페이지로 돌아가기"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+                <span className="text-[13px] font-bold text-[#191F28]">
+                  {userProfile?.displayName || user.email?.split("@")[0] || "내"} 링크 모아보기
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleRefresh}
+                  disabled={isUpdating || isLinksLoading}
+                  type="button"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#4E5968] hover:bg-[#F2F4F6] disabled:opacity-50"
+                  title="새로고침"
+                  aria-label="새로고침"
+                >
+                  <RotateCw className={`h-3.5 w-3.5 ${isUpdating ? "animate-spin" : ""}`} />
+                </button>
+
+                <button
+                  onClick={() => setIsAddLinkDialogOpen(true)}
+                  type="button"
+                  className="flex items-center gap-1 rounded-full bg-[#3182F6] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xs hover:bg-[#1B64DA]"
+                >
+                  <Plus className="h-3 w-3" />
+                  <span>추가</span>
+                </button>
               </div>
             </div>
 
-            <Button
-              variant="secondary"
-              size="sm"
-              className="rounded-xl bg-[#F2F4F6] px-3 text-[12px] font-semibold text-[#4E5968] hover:bg-[#E5E8EB] active:scale-95"
-              render={<Link href="/" />}
-            >
-              프로필 보기
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Search Input Bar (Using shadcn Input) */}
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B95A1] z-10" />
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="링크 제목, 설명 또는 태그 검색..."
-            className="h-11 w-full rounded-2xl border-none bg-white pl-10 pr-10 text-[14px] text-[#191F28] shadow-[0_2px_8px_rgba(0,0,0,0.04)] placeholder:text-[#8B95A1] focus-visible:ring-2 focus-visible:ring-[#3182F6] transition-all"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-[11px] font-bold text-[#8B95A1] hover:bg-[#F2F4F6] cursor-pointer z-10"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Category Filter Pills (Reusable CategoryFilterTabs Component) */}
-        <CategoryFilterTabs
-          tabs={CATEGORY_TABS}
-          selected={selectedCategory}
-          counts={categoryCounts}
-          onSelect={setSelectedCategory}
-        />
-
-        {/* Link List Section */}
-        <section className="overflow-hidden rounded-3xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-[#F2F4F6]">
-            <div className="flex items-center gap-2">
-              <h2 className="text-[16px] font-bold text-[#191F28]">
-                {selectedCategory === "all" ? "전체 링크" : CATEGORY_TABS.find((t) => t.key === selectedCategory)?.label}
-              </h2>
-              <Badge variant="secondary" className="rounded-full bg-[#E8F3FF] px-2 py-0.5 text-[11px] font-bold text-[#3182F6]">
-                {filteredLinks.length}
-              </Badge>
-              {isUpdating && !isLinksLoading && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2 py-0.5 text-[11px] font-semibold text-[#3182F6] animate-in fade-in duration-200">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>동기화 중...</span>
-                </span>
-              )}
+            {/* 검색창 */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B95A1]" />
+              <input
+                type="text"
+                placeholder="제목, 태그, URL 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-2xl border border-[#E5E8EB] bg-white py-2.5 pl-10 pr-4 text-[14px] text-[#191F28] placeholder-[#8B95A1] shadow-xs focus:border-[#3182F6] focus:outline-none"
+              />
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isUpdating || isLinksLoading}
-                aria-label="목록 새로고침"
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[#8B95A1] transition hover:bg-[#F2F4F6] hover:text-[#4E5968] active:scale-95 disabled:opacity-40"
-                title="목록 새로고침"
-              >
-                <RotateCw className={`h-3.5 w-3.5 ${isUpdating ? "animate-spin text-[#3182F6]" : ""}`} />
-              </button>
 
-              <button
-                type="button"
-                onClick={() => setIsAddLinkDialogOpen(true)}
-                className="flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2.5 py-1 text-[12px] font-semibold text-[#3182F6] hover:bg-[#d6e9ff] transition-colors active:scale-95"
-              >
-                <Plus className="h-3 w-3 stroke-[2.5]" />
-                <span>링크 추가</span>
-              </button>
-              {searchQuery && (
-                <span className="text-[12px] text-[#8B95A1] ml-1">
-                  검색결과
-                </span>
-              )}
+            {/* 카테고리 필터 탭 */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              {CATEGORY_TABS.map((tab) => {
+                const count = categoryCounts[tab.key] || 0;
+                const isSelected = selectedCategory === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setSelectedCategory(tab.key)}
+                    className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition active:scale-95 ${
+                      isSelected
+                        ? "bg-[#191F28] text-white shadow-xs"
+                        : "bg-white text-[#6B7684] border border-[#E5E8EB] hover:bg-[#F2F4F6]"
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] ${
+                        isSelected ? "bg-white/20 text-white" : "bg-[#F2F4F6] text-[#8B95A1]"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
 
-          {/* 갱신/업데이트 진행 시 상단에 표시되는 얇은 인디케이터 바 */}
-          {isUpdating && !isLinksLoading && (
-            <div className="h-0.5 w-full bg-[#E8F3FF] overflow-hidden">
-              <div className="h-full w-full bg-[#3182F6] animate-pulse" />
-            </div>
-          )}
-
-          <div className="divide-y divide-[#F2F4F6]">
+            {/* 링크 카드 리스트 */}
             {isLinksLoading ? (
-              <div className="py-14 flex flex-col items-center justify-center text-center">
+              <div className="flex flex-col items-center justify-center rounded-3xl bg-white p-12 text-center shadow-xs border border-[#E5E8EB]">
                 <Loader2 className="h-6 w-6 animate-spin text-[#3182F6]" />
-                <p className="mt-2 text-[13px] font-medium text-[#8B95A1]">
+                <p className="mt-3 text-[14px] font-medium text-[#8B95A1]">
                   Firestore에서 링크를 불러오는 중...
                 </p>
               </div>
-            ) : filteredLinks.length > 0 ? (
-              filteredLinks.map((link) => (
-                <LinkCardItem
-                  key={link.id}
-                  link={link}
-                  onCopy={handleCopyLink}
-                  onUpdateLink={handleUpdateLink}
-                  onDeleteClick={(targetLink) => {
-                    setDeletingLink(targetLink);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                  existingUrls={links.map((l) => l.url)}
-                />
-              ))
-            ) : (
-              <div className="py-14 text-center px-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F2F4F6] text-[#8B95A1] mb-3">
-                  <Filter className="h-5 w-5" />
+            ) : filteredLinks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-3xl bg-white p-10 text-center shadow-xs border border-[#E5E8EB]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F2F4F6] text-[#8B95A1] mb-3">
+                  <LinkIcon className="h-6 w-6" />
                 </div>
-                <p className="text-[15px] font-semibold text-[#191F28]">
-                  {searchQuery || selectedCategory !== "all"
-                    ? "일치하는 링크가 없어요"
-                    : "등록된 링크가 아직 없어요"}
-                </p>
+                <h3 className="text-[15px] font-bold text-[#191F28]">
+                  {searchQuery ? "검색 결과가 없어요" : "등록된 링크가 없어요"}
+                </h3>
                 <p className="mt-1 text-[13px] text-[#8B95A1]">
-                  {searchQuery || selectedCategory !== "all"
-                    ? "검색어를 변경하거나 필터를 초기화해보세요."
-                    : "우측 상단 [+ 추가] 버튼으로 첫 번째 링크를 등록해보세요."}
+                  {searchQuery
+                    ? "다른 검색어로 다시 검색해보세요."
+                    : "새로운 링크를 등록해 나만의 컬렉션을 완성해보세요."}
                 </p>
-                {(searchQuery || selectedCategory !== "all") && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedCategory("all");
-                    }}
-                    className="mt-4 rounded-xl bg-[#E8F3FF] text-[13px] font-semibold text-[#3182F6] hover:bg-[#d6e9ff] active:scale-95"
+                {!searchQuery && (
+                  <button
+                    onClick={() => setIsAddLinkDialogOpen(true)}
+                    type="button"
+                    className="mt-4 flex items-center gap-1.5 rounded-full bg-[#3182F6] px-4 py-2 text-[13px] font-bold text-white shadow-xs hover:bg-[#1B64DA]"
                   >
-                    전체 링크 보기
-                  </Button>
+                    <Plus className="h-4 w-4" />
+                    <span>링크 추가하기</span>
+                  </button>
                 )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {filteredLinks.map((link) => (
+                  <LinkCardItem
+                    key={link.id}
+                    link={link}
+                    onCopy={handleCopy}
+                    onUpdateLink={handleUpdateLink}
+                    onDeleteClick={(l) => {
+                      setDeletingLink(l);
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    existingUrls={links.map((l) => l.url)}
+                    showUrl={true}
+                  />
+                ))}
               </div>
             )}
           </div>
-        </section>
+        )}
 
-        {/* Bottom Banner */}
-        <Card className="rounded-2xl border border-[#E5E8EB] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] ring-0">
-          <CardContent className="flex items-center justify-between p-0">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFF9E6] text-[#FF9E00]">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="text-[13px] font-bold text-[#191F28]">나만의 링크트리 만들기</p>
-                <p className="text-[11px] text-[#8B95A1]">3분 만에 모든 SNS와 링크를 통합하세요</p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              className="rounded-xl bg-[#3182F6] px-3.5 text-[12px] font-bold text-white shadow-xs hover:bg-[#1B64DA] active:scale-95 transition-all"
-              render={<Link href="/" />}
-            >
-              시작하기
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <footer className="mt-2 py-6 text-center text-[12px] text-[#8B95A1]">
-          <p className="font-medium text-[#4E5968]">마이링크 (MyLink)</p>
-          <p className="mt-0.5">토스 디자인 시스템(TDS) & shadcn/ui 기반 단일 링크 플랫폼</p>
+        {/* 푸터 */}
+        <footer className="mt-12 flex flex-col items-center justify-center px-4 text-center">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-[13px] font-bold text-[#8B95A1] transition hover:text-[#4E5968]"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-[#3182F6]" />
+            <span>마이링크 (MyLink)</span>
+          </Link>
+          <p className="mt-1 text-[11px] text-[#B0B8C1]">
+            Firestore 개인화 경로: user/&#123;user.uid&#125;/links
+          </p>
         </footer>
-      </div>
+      </main>
 
-      {/* TDS Toast Message */}
-      {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-[#191F28] px-4 py-3 text-[14px] font-semibold text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)] animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <CheckCircle2 className="h-4 w-4 text-[#04C056]" />
-          <span>{toastMessage}</span>
-        </div>
+      {/* 링크 추가 모달 다이얼로그 */}
+      {user && (
+        <AddLinkDialog
+          open={isAddLinkDialogOpen}
+          onOpenChange={setIsAddLinkDialogOpen}
+          onAddLink={handleAddNewLink}
+          existingUrls={links.map((l) => l.url)}
+        />
       )}
 
-      {/* 새 링크 추가 다이얼로그 (Dialog) */}
-      <AddLinkDialog
-        open={isAddLinkDialogOpen}
-        onOpenChange={setIsAddLinkDialogOpen}
-        onAddLink={handleAddLink}
-        existingUrls={links.map((l) => l.url)}
-      />
+      {/* 링크 삭제 확인 다이얼로그 */}
+      {user && (
+        <DeleteLinkDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          link={deletingLink}
+          onConfirmDelete={handleDeleteLinkConfirm}
+        />
+      )}
 
-      {/* 링크 삭제 확인 모달 (DeleteLinkDialog) */}
-      <DeleteLinkDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        link={deletingLink}
-        onConfirmDelete={handleDeleteLinkConfirm}
-      />
-    </main>
+      {/* 토스트 알림 */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-3">
+          <div className="rounded-full bg-[#191F28]/95 px-4 py-2.5 text-[13px] font-medium text-white shadow-lg backdrop-blur-xs">
+            {toastMessage}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -275,9 +275,9 @@ export function LinkCardItem({
         badgeColor: editBadgeColor.trim() || undefined,
       });
       setIsEditing(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("링크 수정 실패:", err);
-      setSaveError(err?.message || "수정 사항 저장에 실패했습니다. 다시 시도해 주세요.");
+      setSaveError((err as Error)?.message || "수정 사항 저장에 실패했습니다. 다시 시도해 주세요.");
     } finally {
       setIsSaving(false);
     }

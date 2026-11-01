@@ -1,31 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Share2,
-  CheckCircle2,
-  ChevronRight,
   ExternalLink,
   Edit3,
   Plus,
-  Trash2,
-  RotateCcw,
-  X,
+  RotateCw,
+  Loader2,
   Mail,
   Video,
   ShoppingBag,
-  Globe,
-  MessageCircle,
   Link as LinkIcon,
-  Loader2,
-  RotateCw,
+  ShieldCheck,
+  CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 import { ProfileData, DEFAULT_PROFILE, LinkItem } from "@/types/profile";
+import { Header, GoogleIcon } from "@/components/Header";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
 import { DeleteLinkDialog } from "@/components/DeleteLinkDialog";
 import { LinkCardItem } from "@/components/LinkCardItem";
+import { useAuth } from "@/context/AuthContext";
 import {
   addLinkToFirestore,
   getLinksFromFirestore,
@@ -34,29 +31,35 @@ import {
   deleteLinkFromFirestore,
 } from "@/lib/firestoreLinks";
 
-const STORAGE_KEY = "mylink_profile_data";
-
 // SNS 아이콘 컴포넌트 매핑
 function SocialIcon({ platform }: { platform: string }) {
   switch (platform) {
     case "instagram":
       return (
-        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-          <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+        <svg
+          className="h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+          <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
         </svg>
       );
     case "youtube":
       return (
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
         </svg>
       );
     case "tiktok":
       return (
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+          <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
         </svg>
       );
     case "blog":
@@ -72,99 +75,22 @@ function SocialIcon({ platform }: { platform: string }) {
   }
 }
 
-// 링크 아이콘 헬퍼
-function getLinkIcon(iconType?: string) {
-  switch (iconType) {
-    case "video":
-      return <Video className="h-5 w-5 text-[#3182F6]" />;
-    case "shopping":
-      return <ShoppingBag className="h-5 w-5 text-[#F04452]" />;
-    case "message":
-      return <MessageCircle className="h-5 w-5 text-[#FF9E00]" />;
-    case "globe":
-      return <Globe className="h-5 w-5 text-[#04C056]" />;
-    default:
-      return <LinkIcon className="h-5 w-5 text-[#4E5968]" />;
-  }
-}
-
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<ProfileData>(DEFAULT_PROFILE);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isLinksLoading, setIsLinksLoading] = useState(true);
+  const { user, userProfile, loading: authLoading, signInWithGoogle, updateProfileData } = useAuth();
+
+  const [links, setLinks] = useState<LinkItem[]>([]);
+  const [isLinksLoading, setIsLinksLoading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 시연용 편집 모달 상태
+  // 프로필 편집 모달 상태
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<ProfileData>(DEFAULT_PROFILE);
 
-  // 링크 추가 다이얼로그 상태
+  // 링크 추가 및 삭제 다이얼로그 상태
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [deletingLink, setDeletingLink] = useState<LinkItem | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
-  // 1. 페이지 로드 시 프로필 메타데이터 로드 및 Firestore('users/anonymous/links') 최신순 링크 실시간 동기화
-  useEffect(() => {
-    // 로컬스토리지에서 프로필 메타데이터(이름, 바이오 등) 로드
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setProfile((prev) => ({
-          ...prev,
-          displayName: parsed.displayName ?? prev.displayName,
-          username: parsed.username ?? prev.username,
-          badgeText: parsed.badgeText ?? prev.badgeText,
-          avatarUrl: parsed.avatarUrl ?? prev.avatarUrl,
-          bio: parsed.bio ?? prev.bio,
-          socialLinks: parsed.socialLinks ?? prev.socialLinks,
-          contactEmail: parsed.contactEmail ?? prev.contactEmail,
-        }));
-        setEditForm(parsed);
-      }
-    } catch (e) {
-      console.error("로컬스토리지 로드 실패:", e);
-    } finally {
-      setIsLoaded(true);
-    }
-
-    // Firestore 'users/anonymous/links'에서 createdAt 기준 최신순 실시간 구독
-    setIsLinksLoading(true);
-    let unsubscribe: (() => void) | undefined;
-    try {
-      unsubscribe = subscribeLinksFromFirestore(
-        (firestoreLinks) => {
-          // Firestore에서 불러온 링크 목록(createdAt 기준 최신순 정렬) 반영
-          setProfile((prev) => {
-            const updated = { ...prev, links: firestoreLinks };
-            try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-            } catch {}
-            return updated;
-          });
-          setEditForm((prev) => ({ ...prev, links: firestoreLinks }));
-          setIsLinksLoading(false);
-          setIsUpdating(false);
-        },
-        (err) => {
-          console.warn("Firestore 실시간 연동 에러:", err);
-          setIsLinksLoading(false);
-          setIsUpdating(false);
-        }
-      );
-    } catch (err) {
-      console.warn("Firestore 구독 초기화 실패:", err);
-      setIsLinksLoading(false);
-      setIsUpdating(false);
-    }
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, []);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -173,6 +99,66 @@ export default function ProfilePage() {
     }, 2400);
   };
 
+  // 로그인된 유저가 바뀔 때마다 user/{user.uid}/links 실시간 동기화
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const unsubscribe = subscribeLinksFromFirestore(
+      user.uid,
+      (firestoreLinks) => {
+        setLinks(firestoreLinks);
+        setIsLinksLoading(false);
+        setIsUpdating(false);
+      },
+      (err) => {
+        console.warn("Firestore 실시간 연동 에러:", err);
+        setIsLinksLoading(false);
+        setIsUpdating(false);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
+
+  // 프로필 편집 모달 열기
+  const openEditModal = () => {
+    if (userProfile) {
+      setEditForm(JSON.parse(JSON.stringify(userProfile)));
+    } else if (user) {
+      const emailPrefix = user.email ? user.email.split("@")[0] : "user";
+      setEditForm({
+        ...DEFAULT_PROFILE,
+        displayName: emailPrefix,
+        avatarUrl: user.photoURL || DEFAULT_PROFILE.avatarUrl,
+        username: emailPrefix,
+        contactEmail: user.email || DEFAULT_PROFILE.contactEmail,
+      });
+    }
+    setIsEditModalOpen(true);
+  };
+
+  // 프로필 저장 핸들러 (Firestore user/{user.uid} 문서 업데이트)
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      setIsUpdating(true);
+      await updateProfileData(editForm);
+      setIsEditModalOpen(false);
+      showToast("프로필 정보가 저장되었어요 ✨");
+    } catch (e: unknown) {
+      console.error("프로필 저장 실패:", e);
+      showToast("프로필 저장에 실패했어요.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // 링크 복사 핸들러
   const handleCopyLink = (url: string, title: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(url);
@@ -180,22 +166,15 @@ export default function ProfilePage() {
     }
   };
 
-  // 2. 수동 새로고침 (최신 목록 갱신)
+  // 링크 수동 새로고침 (Firestore user/{user.uid}/links 조회)
   const handleRefresh = async () => {
-    if (isUpdating || isLinksLoading) return;
+    if (!user || isUpdating || isLinksLoading) return;
     try {
       setIsUpdating(true);
-      const latestLinks = await getLinksFromFirestore();
-      setProfile((prev) => {
-        const updated = { ...prev, links: latestLinks };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
-      setEditForm((prev) => ({ ...prev, links: latestLinks }));
+      const latestLinks = await getLinksFromFirestore(user.uid);
+      setLinks(latestLinks);
       showToast("최신 링크 목록으로 갱신되었어요 ✨");
-    } catch (e) {
+    } catch (e: unknown) {
       console.error("새로고침 실패:", e);
       showToast("목록 갱신에 실패했어요");
     } finally {
@@ -203,87 +182,47 @@ export default function ProfilePage() {
     }
   };
 
-  // 3. 로컬스토리지에 저장하기
-  const handleSaveProfile = (updated: ProfileData) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      setProfile(updated);
-      setIsEditModalOpen(false);
-      showToast("로컬 스토리지에 저장되었어요 ✨");
-    } catch (e) {
-      console.error("저장 실패:", e);
-      showToast("저장에 실패했어요");
-    }
-  };
-
-  // 4. 다이얼로그에서 단일 링크 추가 시 Firestore(users/anonymous/links)에 저장
+  // 새 링크 추가 시 Firestore user/{user.uid}/links에 저장
   const handleAddNewLink = async (newLink: LinkItem) => {
+    if (!user) {
+      showToast("로그인이 필요합니다.");
+      return;
+    }
     try {
       setIsUpdating(true);
-      const savedLink = await addLinkToFirestore(newLink);
-
-      setProfile((prev) => {
-        const exists = prev.links.some((l) => l.id === savedLink.id);
-        const nextLinks = exists ? prev.links : [savedLink, ...prev.links];
-        const updatedProfile: ProfileData = {
-          ...prev,
-          links: nextLinks,
-        };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
-        } catch {}
-        return updatedProfile;
+      const savedLink = await addLinkToFirestore(user.uid, newLink);
+      setLinks((prev) => {
+        const exists = prev.some((l) => l.id === savedLink.id);
+        return exists ? prev : [savedLink, ...prev];
       });
-
-      setEditForm((prev) => ({
-        ...prev,
-        links: [savedLink, ...prev.links.filter((l) => l.id !== savedLink.id)],
-      }));
-
       showToast("새 링크가 Firestore에 성공적으로 저장되었어요 🚀");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Firestore 링크 추가 실패:", e);
       showToast("Firestore 링크 저장에 실패했어요");
       throw e;
     } finally {
-      // 실시간 리스너가 최신 순서를 확정지을 때까지 짧게 로딩 인디케이터 유지
       setTimeout(() => {
         setIsUpdating(false);
       }, 500);
     }
   };
 
-  // 5. Firestore 링크 수정 핸들러 (인라인 편집)
-  const handleUpdateLink = async (
-    id: string,
-    updatedData: Partial<Omit<LinkItem, "id">>
-  ) => {
+  // 링크 인라인 수정 시 Firestore user/{user.uid}/links에 업데이트
+  const handleUpdateLink = async (id: string, updatedData: Partial<Omit<LinkItem, "id">>) => {
+    if (!user) {
+      showToast("로그인이 필요합니다.");
+      return;
+    }
     try {
       setIsUpdating(true);
-      await updateLinkInFirestore(id, updatedData);
-
-      setProfile((prev) => {
-        const nextLinks = prev.links.map((l) =>
-          l.id === id ? { ...l, ...updatedData, updatedAtMs: Date.now() } : l
-        );
-        const updated = { ...prev, links: nextLinks };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
-
-      setEditForm((prev) => ({
-        ...prev,
-        links: prev.links.map((l) =>
-          l.id === id ? { ...l, ...updatedData, updatedAtMs: Date.now() } : l
-        ),
-      }));
-
-      showToast("링크가 성공적으로 수정되었어요 ✨");
-    } catch (e: any) {
+      await updateLinkInFirestore(user.uid, id, updatedData);
+      setLinks((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, ...updatedData, updatedAtMs: Date.now() } : l))
+      );
+      showToast("링크가 수정되었어요 ✨");
+    } catch (e: unknown) {
       console.error("Firestore 링크 수정 실패:", e);
-      showToast("Firestore 링크 수정에 실패했어요");
+      showToast("링크 수정에 실패했어요");
       throw e;
     } finally {
       setTimeout(() => {
@@ -292,28 +231,18 @@ export default function ProfilePage() {
     }
   };
 
-  // 6. Firestore 링크 삭제 핸들러
+  // 링크 삭제 시 Firestore user/{user.uid}/links에서 삭제
   const handleDeleteLinkConfirm = async (id: string) => {
+    if (!user) {
+      showToast("로그인이 필요합니다.");
+      return;
+    }
     try {
       setIsUpdating(true);
-      await deleteLinkFromFirestore(id);
-
-      setProfile((prev) => {
-        const nextLinks = prev.links.filter((l) => l.id !== id);
-        const updated = { ...prev, links: nextLinks };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
-
-      setEditForm((prev) => ({
-        ...prev,
-        links: prev.links.filter((l) => l.id !== id),
-      }));
-
+      await deleteLinkFromFirestore(user.uid, id);
+      setLinks((prev) => prev.filter((l) => l.id !== id));
       showToast("링크가 삭제되었어요 🗑️");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Firestore 링크 삭제 실패:", e);
       showToast("Firestore 링크 삭제에 실패했어요");
       throw e;
@@ -324,298 +253,437 @@ export default function ProfilePage() {
     }
   };
 
-  // 4. 기본값으로 초기화
-  const handleResetToDefault = () => {
-    if (confirm("프로필을 기본 샘플 데이터로 초기화할까요?")) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PROFILE));
-        setProfile(DEFAULT_PROFILE);
-        setEditForm(DEFAULT_PROFILE);
-        setIsEditModalOpen(false);
-        showToast("기본 데이터로 초기화되었어요");
-      } catch (e) {
-        console.error("초기화 실패:", e);
-      }
-    }
-  };
-
-  // 링크 공유 기능
+  // 링크 공유
   const handleShare = () => {
     if (typeof window !== "undefined") {
+      const shareTitle = userProfile?.displayName || user?.displayName || "마이링크";
+      const shareText = userProfile?.bio || "나만의 마이링크 페이지입니다.";
       if (navigator.share) {
         navigator
           .share({
-            title: `${profile.displayName} - 마이링크`,
-            text: profile.bio,
+            title: `${shareTitle} - 마이링크`,
+            text: shareText,
             url: window.location.href,
           })
           .catch(() => {});
       } else {
         navigator.clipboard.writeText(window.location.href);
-        showToast("프로필 링크가 복사되었어요");
+        showToast("프로필 링크가 클립보드에 복사되었어요 📋");
       }
     }
   };
 
-  // 편집 모달 열기
-  const openEditModal = () => {
-    setEditForm(JSON.parse(JSON.stringify(profile)));
-    setIsEditModalOpen(true);
-  };
-
-  // 편집 모달 내부 링크 추가 핸들러
-  const handleAddLink = () => {
-    const newLink: LinkItem = {
-      id: "l_" + Date.now(),
-      title: "새 링크 타이틀",
-      subtitle: "링크에 대한 간단한 설명",
-      url: "https://",
-      iconType: "link",
-    };
-    setEditForm((prev) => ({
-      ...prev,
-      links: [newLink, ...prev.links],
-    }));
-  };
-
-  // 링크 삭제 핸들러
-  const handleDeleteLink = (id: string) => {
-    setEditForm((prev) => ({
-      ...prev,
-      links: prev.links.filter((l) => l.id !== id),
-    }));
-  };
-
-  if (!isLoaded) {
+  // 로딩 화면
+  if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F2F4F6]">
-        <div className="text-[15px] font-medium text-[#8B95A1]">프로필을 불러오는 중...</div>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-[#3182F6]" />
+          <div className="text-[15px] font-medium text-[#4E5968]">
+            마이링크를 불러오는 중이에요...
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#F2F4F6] pb-24 text-[#191F28] antialiased">
-      {/* TDS Top App Bar */}
-      <header className="sticky top-0 z-20 flex h-14 w-full items-center justify-between bg-[#F2F4F6]/90 px-5 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <span className="text-[17px] font-bold tracking-tight text-[#191F28]">
-            마이링크
-          </span>
-          <span className="rounded-md bg-[#E5E8EB] px-1.5 py-0.5 text-[10px] font-medium text-[#4E5968]">
-            시연 모드
-          </span>
-        </div>
+    <div className="min-h-screen bg-[#F2F4F6]">
+      <Header onShare={handleShare} showShare={!!user} />
 
-        <div className="flex items-center gap-1">
-          {/* 시연용 프로필 편집 버튼 */}
-          <button
-            onClick={openEditModal}
-            type="button"
-            className="flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-[13px] font-semibold text-[#3182F6] shadow-sm transition hover:bg-[#E8F3FF] active:scale-95"
-            aria-label="프로필 수정"
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            <span>편집</span>
-          </button>
+      <main className="relative mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-md flex-col pb-24 text-[#191F28] antialiased">
+        {/* ============================================================== */}
+        {/* 케이스 1: 로그인을 안 했을 때 화면 (사용 안내 문구 및 로그인 유도) */}
+        {/* ============================================================== */}
+        {!user ? (
+          <div className="flex flex-col gap-5 px-4 pt-6">
+            {/* 온보딩 인트로 배너 */}
+            <section className="overflow-hidden rounded-3xl bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-[#E5E8EB]">
+              <div className="flex flex-col items-center text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E8F3FF] text-[#3182F6] mb-4">
+                  <Sparkles className="h-8 w-8 animate-pulse" />
+                </div>
 
-          {/* 공유 버튼 */}
-          <button
-            onClick={handleShare}
-            type="button"
-            aria-label="공유하기"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[#4E5968] transition hover:bg-[#E5E8EB] active:bg-[#D1D6DB]"
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
-        </div>
-      </header>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F3FF] px-3 py-1 text-[12px] font-semibold text-[#3182F6] mb-3">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  <span>3초 만에 시작하는 나만의 링크</span>
+                </div>
 
-      {/* Main Content Area */}
-      <div className="flex flex-col gap-4 px-4 pt-2">
-        {/* Profile Card */}
-        <section className="rounded-3xl bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-          <div className="flex flex-col items-center text-center">
-            {/* Avatar (76px) */}
-            <div className="relative h-[76px] w-[76px] overflow-hidden rounded-full bg-[#F2F4F6] ring-4 ring-[#E8F3FF]">
-              <Image
-                src={profile.avatarUrl}
-                alt={`${profile.displayName} 프로필 사진`}
-                fill
-                sizes="76px"
-                className="object-cover"
-                priority
-              />
-            </div>
+                <h1 className="text-[22px] font-bold tracking-tight text-[#191F28] mb-2 leading-snug">
+                  로그인하고 나만의 링크 페이지를
+                  <br />
+                  간편하게 완성해보세요
+                </h1>
 
-            {/* Name & Badge */}
-            <div className="mt-3.5 flex flex-col items-center">
-              <span className="rounded-full bg-[#E8F3FF] px-2.5 py-0.5 text-[11px] font-semibold text-[#3182F6]">
-                {profile.badgeText}
-              </span>
-              <h1 className="mt-1.5 text-[22px] font-bold tracking-tight text-[#191F28]">
-                {profile.displayName}
-              </h1>
-              <p className="text-[13px] text-[#8B95A1]">@{profile.username}</p>
-            </div>
-
-            {/* Bio Description */}
-            <p className="mt-3 text-[14px] leading-relaxed text-[#4E5968]">
-              {profile.bio}
-            </p>
-
-            {/* Social Icons Bar */}
-            {profile.socialLinks && profile.socialLinks.length > 0 && (
-              <div className="mt-5 flex items-center justify-center gap-2 border-t border-[#F2F4F6] pt-4">
-                {profile.socialLinks.map((s) => (
-                  <a
-                    key={s.id}
-                    href={s.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={s.name}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F9FAFB] text-[#4E5968] transition hover:bg-[#E5E8EB] hover:text-[#191F28] active:scale-95"
-                  >
-                    <SocialIcon platform={s.platform} />
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Links Section */}
-        <section className="overflow-hidden rounded-3xl bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-          <div className="flex items-center justify-between px-5 pt-5 pb-2">
-            <div className="flex items-center gap-2">
-              <h2 className="text-[17px] font-bold text-[#191F28]">
-                추천 링크
-              </h2>
-              {isUpdating && !isLinksLoading && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2 py-0.5 text-[11px] font-semibold text-[#3182F6] animate-in fade-in duration-200">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>동기화 중...</span>
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isUpdating || isLinksLoading}
-                aria-label="목록 새로고침"
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[#8B95A1] transition hover:bg-[#F2F4F6] hover:text-[#4E5968] active:scale-95 disabled:opacity-40"
-                title="목록 새로고침"
-              >
-                <RotateCw className={`h-3.5 w-3.5 ${isUpdating ? "animate-spin text-[#3182F6]" : ""}`} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsAddLinkDialogOpen(true)}
-                className="flex items-center gap-1 rounded-full bg-[#E8F3FF] px-2.5 py-1 text-[12px] font-semibold text-[#3182F6] transition hover:bg-[#d6e9ff] active:scale-95"
-              >
-                <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-                <span>링크 추가</span>
-              </button>
-
-              <Link
-                href="/links"
-                className="flex items-center gap-0.5 text-[13px] font-semibold text-[#8B95A1] hover:text-[#3182F6] transition-colors ml-0.5"
-              >
-                <span>전체보기</span>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-
-          {/* 갱신/업데이트 진행 시 상단에 표시되는 얇은 인디케이터 바 */}
-          {isUpdating && !isLinksLoading && (
-            <div className="h-0.5 w-full bg-[#E8F3FF] overflow-hidden">
-              <div className="h-full w-full bg-[#3182F6] animate-pulse" />
-            </div>
-          )}
-
-          <div className="divide-y divide-[#F2F4F6]">
-            {isLinksLoading ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Loader2 className="h-6 w-6 animate-spin text-[#3182F6]" />
-                <p className="mt-2 text-[13px] font-medium text-[#8B95A1]">
-                  Firestore에서 링크를 불러오는 중...
+                <p className="text-[14px] leading-relaxed text-[#6B7684] mb-6">
+                  Google 소셜 계정으로 1초 만에 로그인하면,
+                  <br />
+                  인스타그램, 유튜브, 블로그, 포트폴리오를
+                  <br />
+                  단 하나의 깔끔한 토스 감성 페이지로 모을 수 있어요.
                 </p>
-              </div>
-            ) : profile.links.length > 0 ? (
-              profile.links.map((link) => (
-                <LinkCardItem
-                  key={link.id}
-                  link={link}
-                  onCopy={handleCopyLink}
-                  onUpdateLink={handleUpdateLink}
-                  onDeleteClick={(targetLink) => {
-                    setDeletingLink(targetLink);
-                    setIsDeleteDialogOpen(true);
-                  }}
-                  existingUrls={profile.links.map((l) => l.url)}
-                  showUrl={false}
-                />
-              ))
-            ) : (
-              <div className="py-12 text-center text-[14px] text-[#8B95A1]">
-                <p className="font-medium text-[#4E5968]">등록된 링크가 없어요.</p>
-                <p className="mt-1 text-[13px]">상단의 [링크 추가] 버튼을 눌러 새 링크를 등록해보세요!</p>
+
+                {/* 대형 구글 로그인 CTA 버튼 */}
                 <button
+                  onClick={() => signInWithGoogle()}
                   type="button"
-                  onClick={() => setIsAddLinkDialogOpen(true)}
-                  className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#E8F3FF] px-3 py-1.5 text-[12px] font-semibold text-[#3182F6] hover:bg-[#d6e9ff]"
+                  className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[#3182F6] px-5 py-3.5 text-[15px] font-bold text-white shadow-md transition hover:bg-[#1B64DA] active:scale-[0.98]"
                 >
-                  <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
-                  <span>새 링크 추가하기</span>
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white p-1">
+                    <GoogleIcon className="h-4 w-4" />
+                  </div>
+                  <span>Google 계정으로 시작하기</span>
                 </button>
               </div>
-            )}
-          </div>
-        </section>
+            </section>
 
-        {/* Footer */}
-        <footer className="mt-2 py-6 text-center text-[12px] text-[#8B95A1]">
-          <p className="font-medium text-[#4E5968]">마이링크 (MyLink)</p>
-          <p className="mt-1">Firebase Firestore 기반 링크 관리</p>
-        </footer>
-      </div>
+            {/* 로그인 후 사용 가능한 기능 안내 카드 */}
+            <section className="rounded-3xl bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB]">
+              <h2 className="text-[15px] font-bold text-[#191F28] mb-3 flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-[#3182F6]" />
+                <span>로그인 후 이런 기능을 사용할 수 있어요</span>
+              </h2>
 
-      {/* TDS Toast Message */}
-      {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl bg-[#191F28] px-4 py-3 text-[14px] font-semibold text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)] animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <CheckCircle2 className="h-4 w-4 text-[#04C056]" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
+              <ul className="space-y-3">
+                <li className="flex items-start gap-3 rounded-2xl bg-[#F8F9FA] p-3 transition hover:bg-[#F2F4F6]">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white shadow-xs text-[#3182F6] font-bold text-[13px]">
+                    1
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-bold text-[#333D4B]">
+                      개인화된 Firestore 저장소
+                    </h3>
+                    <p className="text-[12px] text-[#8B95A1] leading-relaxed">
+                      <code className="text-[#3182F6] bg-[#E8F3FF] px-1 py-0.5 rounded">
+                        user/&#123;user.uid&#125;/links
+                      </code>{" "}
+                      경로로 오직 나만의 링크들이 안전하게 분리 저장돼요.
+                    </p>
+                  </div>
+                </li>
 
-      {/* 시연용 프로필 편집 모달 */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-xs p-0 sm:p-4">
-          <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#F2F4F6] px-5 py-4">
-              <div>
-                <h3 className="text-[17px] font-bold text-[#191F28]">프로필 편집</h3>
-                <p className="text-[12px] text-[#8B95A1]">수정 시 로컬 스토리지에 즉시 동기화됩니다</p>
+                <li className="flex items-start gap-3 rounded-2xl bg-[#F8F9FA] p-3 transition hover:bg-[#F2F4F6]">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white shadow-xs text-[#3182F6] font-bold text-[13px]">
+                    2
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-bold text-[#333D4B]">
+                      실시간 링크 추가 · 수정 · 삭제
+                    </h3>
+                    <p className="text-[12px] text-[#8B95A1] leading-relaxed">
+                      영상, 쇼핑, 블로그 카테고리별 아이콘과 뱃지(NEW, 인기 등)를 달아 자유롭게 커스텀할 수 있어요.
+                    </p>
+                  </div>
+                </li>
+
+                <li className="flex items-start gap-3 rounded-2xl bg-[#F8F9FA] p-3 transition hover:bg-[#F2F4F6]">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white shadow-xs text-[#3182F6] font-bold text-[13px]">
+                    3
+                  </div>
+                  <div>
+                    <h3 className="text-[14px] font-bold text-[#333D4B]">
+                      프로필 정보 화면 커스터마이징
+                    </h3>
+                    <p className="text-[12px] text-[#8B95A1] leading-relaxed">
+                      Google 프로필 사진 및 이름이 기본 연동되며, 소개글과 SNS 링크를 직접 편집해 보여줄 수 있어요.
+                    </p>
+                  </div>
+                </li>
+              </ul>
+            </section>
+
+            {/* 완성 예시 미리보기 안내 카드 */}
+            <section className="rounded-3xl bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB]">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[13px] font-bold text-[#8B95A1]">
+                  미리보기 예시 (완성된 화면)
+                </span>
+                <span className="rounded-md bg-[#E5E8EB] px-2 py-0.5 text-[10px] font-semibold text-[#4E5968]">
+                  샘플 뷰
+                </span>
               </div>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-[#8B95A1] hover:bg-[#F2F4F6]"
-              >
-                <X className="h-5 w-5" />
-              </button>
+
+              {/* 샘플 미니 프로필 카드 */}
+              <div className="rounded-2xl border border-[#E5E8EB] bg-[#F8F9FA] p-4 text-center">
+                <div className="relative mx-auto h-14 w-14 overflow-hidden rounded-full ring-2 ring-[#3182F6]/30 mb-2">
+                  <Image
+                    src={DEFAULT_PROFILE.avatarUrl}
+                    alt="샘플 아바타"
+                    fill
+                    sizes="56px"
+                    className="object-cover"
+                  />
+                </div>
+                <h4 className="text-[15px] font-bold text-[#191F28]">지은 JIEUN</h4>
+                <p className="text-[12px] text-[#8B95A1] mt-0.5">@jieun_daily</p>
+                <p className="text-[12px] text-[#4E5968] mt-2 line-clamp-2 px-2">
+                  &quot;일상을 담는 브이로그와 좋아하는 공간을 공유해요 ✨&quot;
+                </p>
+
+                {/* 샘플 링크 버튼 2개 */}
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between rounded-xl bg-white p-3 shadow-xs border border-[#E5E8EB] text-left">
+                    <div className="flex items-center gap-2.5">
+                      <Video className="h-4 w-4 text-[#3182F6]" />
+                      <span className="text-[13px] font-semibold text-[#333D4B]">
+                        이번 주 브이로그 보러가기 🎬
+                      </span>
+                    </div>
+                    <span className="rounded bg-[#E8F3FF] px-1.5 py-0.5 text-[10px] font-bold text-[#3182F6]">
+                      NEW
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl bg-white p-3 shadow-xs border border-[#E5E8EB] text-left">
+                    <div className="flex items-center gap-2.5">
+                      <ShoppingBag className="h-4 w-4 text-[#F04452]" />
+                      <span className="text-[13px] font-semibold text-[#333D4B]">
+                        착장 &amp; 소품 정보 모음 🛍️
+                      </span>
+                    </div>
+                    <span className="rounded bg-[#FFF0F0] px-1.5 py-0.5 text-[10px] font-bold text-[#F04452]">
+                      인기
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : (
+          /* ============================================================== */
+          /* 케이스 2: 로그인을 했을 때 화면 (마이페이지: user/{user.uid}/links 개인화 화면) */
+          /* ============================================================== */
+          <div className="flex flex-col gap-4 px-4 pt-3">
+            {/* Firestore 개인화 경로 인포메이션 배너 */}
+            <div className="flex items-center justify-between rounded-2xl bg-white px-3.5 py-2.5 shadow-xs border border-[#E5E8EB]">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="flex h-2 w-2 rounded-full bg-[#04C056]" />
+                <span className="text-[11px] font-medium text-[#6B7684] truncate">
+                  경로:{" "}
+                  <code className="text-[#3182F6] font-semibold">
+                    user/{user.uid.slice(0, 8)}.../links
+                  </code>
+                </span>
+              </div>
+              <span className="shrink-0 rounded-full bg-[#E8F3FF] px-2 py-0.5 text-[10px] font-bold text-[#3182F6]">
+                마이페이지
+              </span>
             </div>
 
-            {/* Modal Body (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Profile Inputs */}
+            {/* Profile Card (Firestore user/{user.uid} 문서의 유저 정보 표시) */}
+            <section className="rounded-3xl bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB]">
+              <div className="flex flex-col items-center text-center">
+                {/* 1:1 Avatar */}
+                <div className="relative h-[76px] w-[76px] overflow-hidden rounded-full bg-[#F2F4F6] ring-4 ring-[#E8F3FF] shadow-xs">
+                  <Image
+                    src={
+                      userProfile?.avatarUrl ||
+                      user.photoURL ||
+                      DEFAULT_PROFILE.avatarUrl
+                    }
+                    alt={`${userProfile?.displayName || user.email?.split("@")[0] || "유저"} 프로필 사진`}
+                    fill
+                    sizes="76px"
+                    className="object-cover"
+                    priority
+                  />
+                </div>
+
+                {/* 카테고리 / 직군 배지 */}
+                <div className="mt-3.5">
+                  <span className="inline-flex items-center rounded-full bg-[#F2F4F6] px-3 py-1 text-[12px] font-semibold text-[#4E5968]">
+                    {userProfile?.badgeText || "크리에이터 · 링크 관리자"}
+                  </span>
+                </div>
+
+                {/* 크리에이터 활동명 (Display Name: 이메일 앞부분 기본 사용) */}
+                <h1 className="mt-2 text-[20px] font-bold tracking-tight text-[#191F28]">
+                  {userProfile?.displayName || user.email?.split("@")[0] || "마이링크 유저"}
+                </h1>
+
+                {/* 고유 핸들 / 이메일 (@username) */}
+                <p className="mt-0.5 text-[13px] font-medium text-[#8B95A1]">
+                  @{userProfile?.username || user.email?.split("@")[0] || "user"}
+                </p>
+
+                {/* 한 줄 바이오 (소개글) */}
+                <p className="mt-3 max-w-[280px] text-[14px] leading-relaxed text-[#4E5968] break-keep">
+                  {userProfile?.bio || "반가워요! 나만의 마이링크 페이지입니다 ✨"}
+                </p>
+
+                {/* 프로필 편집 버튼 */}
+                <div className="mt-4 flex items-center gap-2">
+                  <button
+                    onClick={openEditModal}
+                    type="button"
+                    className="flex items-center gap-1.5 rounded-full bg-[#F2F4F6] px-3.5 py-1.5 text-[12px] font-semibold text-[#3182F6] transition hover:bg-[#E8F3FF] active:scale-95"
+                    aria-label="프로필 수정"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    <span>프로필 정보 수정</span>
+                  </button>
+                </div>
+
+                {/* 공식 SNS 아이콘 바 */}
+                {userProfile?.socialLinks && userProfile.socialLinks.length > 0 && (
+                  <div className="mt-5 w-full border-t border-[#F2F4F6] pt-4">
+                    <div className="flex items-center justify-center gap-3">
+                      {userProfile.socialLinks.map((item) => (
+                        <a
+                          key={item.id}
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`${item.name} 채널로 이동`}
+                          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F9FAFB] text-[#4E5968] shadow-xs transition hover:bg-[#F2F4F6] hover:text-[#191F28] hover:scale-110 active:scale-95"
+                        >
+                          <SocialIcon platform={item.platform} />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Links Management Section */}
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[17px] font-bold text-[#191F28]">내 링크 목록</h2>
+                  <span className="rounded-full bg-[#E5E8EB] px-2 py-0.5 text-[11px] font-bold text-[#4E5968]">
+                    {links.length}개
+                  </span>
+                  {isUpdating && (
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-[#3182F6] animate-pulse">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      동기화 중...
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleRefresh}
+                    disabled={isUpdating || isLinksLoading}
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#4E5968] shadow-xs transition hover:bg-[#E5E8EB] active:scale-95 disabled:opacity-50"
+                    title="최신 링크 새로고침"
+                    aria-label="새로고침"
+                  >
+                    <RotateCw className={`h-3.5 w-3.5 ${isUpdating ? "animate-spin" : ""}`} />
+                  </button>
+
+                  <button
+                    onClick={() => setIsAddLinkDialogOpen(true)}
+                    type="button"
+                    className="flex items-center gap-1 rounded-full bg-[#3182F6] px-3 py-1.5 text-[13px] font-semibold text-white shadow-xs transition hover:bg-[#1B64DA] active:scale-95"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>링크 추가</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 링크 목록 */}
+              {isLinksLoading ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl bg-white p-12 text-center shadow-xs border border-[#E5E8EB]">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#3182F6]" />
+                  <p className="mt-3 text-[14px] font-medium text-[#8B95A1]">
+                    Firestore에서 링크 목록을 불러오는 중...
+                  </p>
+                </div>
+              ) : links.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl bg-white p-10 text-center shadow-xs border border-[#E5E8EB]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F2F4F6] text-[#8B95A1] mb-3">
+                    <LinkIcon className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-[15px] font-bold text-[#191F28]">
+                    등록된 링크가 없어요
+                  </h3>
+                  <p className="mt-1 text-[13px] text-[#8B95A1] max-w-[240px]">
+                    상단의 <strong>[+ 링크 추가]</strong> 버튼을 눌러 첫 번째 링크를 등록해보세요!
+                  </p>
+                  <button
+                    onClick={() => setIsAddLinkDialogOpen(true)}
+                    type="button"
+                    className="mt-4 flex items-center gap-1.5 rounded-full bg-[#3182F6] px-4 py-2 text-[13px] font-bold text-white shadow-xs transition hover:bg-[#1B64DA] active:scale-95"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>첫 링크 추가하기</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  {links.map((link) => (
+                    <LinkCardItem
+                      key={link.id}
+                      link={link}
+                      onCopy={handleCopyLink}
+                      onUpdateLink={handleUpdateLink}
+                      onDeleteClick={(l) => {
+                        setDeletingLink(l);
+                        setIsDeleteDialogOpen(true);
+                      }}
+                      existingUrls={links.map((l) => l.url)}
+                      showUrl={true}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* 푸터 */}
+        <footer className="mt-12 flex flex-col items-center justify-center px-4 text-center">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-[13px] font-bold text-[#8B95A1] transition hover:text-[#4E5968]"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-[#3182F6]" />
+            <span>마이링크 (MyLink)</span>
+          </Link>
+          <p className="mt-1 text-[11px] text-[#B0B8C1]">
+            소셜 링크를 하나로 통합하고 손쉽게 공유하세요
+          </p>
+        </footer>
+      </main>
+
+      {/* 링크 추가 모달 다이얼로그 */}
+      {user && (
+        <AddLinkDialog
+          open={isAddLinkDialogOpen}
+          onOpenChange={setIsAddLinkDialogOpen}
+          onAddLink={handleAddNewLink}
+          existingUrls={links.map((l) => l.url)}
+        />
+      )}
+
+      {/* 링크 삭제 확인 다이얼로그 */}
+      {user && (
+        <DeleteLinkDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          link={deletingLink}
+          onConfirmDelete={handleDeleteLinkConfirm}
+        />
+      )}
+
+      {/* 프로필 수정 모달 다이얼로그 */}
+      {isEditModalOpen && user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95">
+            <h3 className="text-[18px] font-bold text-[#191F28] mb-1">
+              프로필 정보 수정
+            </h3>
+            <p className="text-[12px] text-[#8B95A1] mb-4">
+              Firestore <code>user/{user.uid.slice(0, 6)}...</code>에 저장됩니다.
+            </p>
+
+            <form onSubmit={handleSaveProfile} className="flex flex-col gap-3.5">
               <div>
-                <label className="block text-[13px] font-medium text-[#4E5968] mb-1">
-                  닉네임
+                <label className="text-[12px] font-semibold text-[#4E5968] mb-1 block">
+                  활동명 (이름)
                 </label>
                 <input
                   type="text"
@@ -623,13 +691,29 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, displayName: e.target.value })
                   }
-                  className="w-full rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] px-3.5 py-2.5 text-[14px] text-[#191F28] focus:border-[#3182F6] focus:bg-white focus:outline-none"
+                  required
+                  className="w-full rounded-xl border border-[#E5E8EB] px-3 py-2 text-[14px] text-[#191F28] focus:border-[#3182F6] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[13px] font-medium text-[#4E5968] mb-1">
-                  태그 / 분야
+                <label className="text-[12px] font-semibold text-[#4E5968] mb-1 block">
+                  핸들 (@username)
+                </label>
+                <input
+                  type="text"
+                  value={editForm.username}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, username: e.target.value })
+                  }
+                  required
+                  className="w-full rounded-xl border border-[#E5E8EB] px-3 py-2 text-[14px] text-[#191F28] focus:border-[#3182F6] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[12px] font-semibold text-[#4E5968] mb-1 block">
+                  직군 / 뱃지 텍스트
                 </label>
                 <input
                   type="text"
@@ -637,12 +721,13 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, badgeText: e.target.value })
                   }
-                  className="w-full rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] px-3.5 py-2.5 text-[14px] text-[#191F28] focus:border-[#3182F6] focus:bg-white focus:outline-none"
+                  placeholder="예: 크리에이터 · 개발자"
+                  className="w-full rounded-xl border border-[#E5E8EB] px-3 py-2 text-[14px] text-[#191F28] focus:border-[#3182F6] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[13px] font-medium text-[#4E5968] mb-1">
+                <label className="text-[12px] font-semibold text-[#4E5968] mb-1 block">
                   한 줄 소개 (Bio)
                 </label>
                 <textarea
@@ -651,132 +736,53 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setEditForm({ ...editForm, bio: e.target.value })
                   }
-                  className="w-full rounded-xl border border-[#E5E8EB] bg-[#F9FAFB] px-3.5 py-2.5 text-[14px] text-[#191F28] focus:border-[#3182F6] focus:bg-white focus:outline-none resize-none"
+                  className="w-full rounded-xl border border-[#E5E8EB] px-3 py-2 text-[14px] text-[#191F28] focus:border-[#3182F6] focus:outline-none"
                 />
               </div>
 
-              {/* Links Management */}
-              <div className="pt-2 border-t border-[#F2F4F6]">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[14px] font-bold text-[#191F28]">링크 목록</span>
-                  <button
-                    onClick={handleAddLink}
-                    type="button"
-                    className="flex items-center gap-1 rounded-lg bg-[#E8F3FF] px-2.5 py-1 text-[12px] font-semibold text-[#3182F6] hover:bg-[#d6e9ff]"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>링크 추가</span>
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {editForm.links.map((link, idx) => (
-                    <div
-                      key={link.id}
-                      className="rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB] p-3 space-y-2 relative"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-semibold text-[#8B95A1]">
-                          링크 #{idx + 1}
-                        </span>
-                        <button
-                          onClick={() => handleDeleteLink(link.id)}
-                          type="button"
-                          className="text-[#F04452] hover:bg-[#FFF0F0] p-1 rounded-md"
-                          title="삭제"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-
-                      <input
-                        type="text"
-                        placeholder="링크 제목"
-                        value={link.title}
-                        onChange={(e) => {
-                          const newLinks = [...editForm.links];
-                          newLinks[idx].title = e.target.value;
-                          setEditForm({ ...editForm, links: newLinks });
-                        }}
-                        className="w-full rounded-lg border border-[#E5E8EB] bg-white px-2.5 py-1.5 text-[13px] text-[#191F28] focus:border-[#3182F6] focus:outline-none"
-                      />
-
-                      <input
-                        type="text"
-                        placeholder="간단한 부제목/설명 (선택)"
-                        value={link.subtitle || ""}
-                        onChange={(e) => {
-                          const newLinks = [...editForm.links];
-                          newLinks[idx].subtitle = e.target.value;
-                          setEditForm({ ...editForm, links: newLinks });
-                        }}
-                        className="w-full rounded-lg border border-[#E5E8EB] bg-white px-2.5 py-1.5 text-[12px] text-[#4E5968] focus:border-[#3182F6] focus:outline-none"
-                      />
-
-                      <input
-                        type="text"
-                        placeholder="https://..."
-                        value={link.url}
-                        onChange={(e) => {
-                          const newLinks = [...editForm.links];
-                          newLinks[idx].url = e.target.value;
-                          setEditForm({ ...editForm, links: newLinks });
-                        }}
-                        className="w-full rounded-lg border border-[#E5E8EB] bg-white px-2.5 py-1.5 text-[12px] text-[#3182F6] focus:border-[#3182F6] focus:outline-none"
-                      />
-                    </div>
-                  ))}
-                </div>
+              <div>
+                <label className="text-[12px] font-semibold text-[#4E5968] mb-1 block">
+                  프로필 아바타 이미지 URL
+                </label>
+                <input
+                  type="url"
+                  value={editForm.avatarUrl}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, avatarUrl: e.target.value })
+                  }
+                  className="w-full rounded-xl border border-[#E5E8EB] px-3 py-2 text-[14px] text-[#191F28] focus:border-[#3182F6] focus:outline-none"
+                />
               </div>
-            </div>
 
-            {/* Modal Footer */}
-            <div className="flex items-center justify-between border-t border-[#F2F4F6] bg-white p-4">
-              <button
-                type="button"
-                onClick={handleResetToDefault}
-                className="flex items-center gap-1 text-[13px] font-semibold text-[#8B95A1] hover:text-[#4E5968]"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span>기본값 초기화</span>
-              </button>
-
-              <div className="flex gap-2">
+              <div className="mt-3 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="rounded-xl bg-[#F2F4F6] px-4 py-2.5 text-[14px] font-semibold text-[#4E5968] hover:bg-[#E5E8EB]"
+                  className="rounded-xl bg-[#F2F4F6] px-4 py-2 text-[13px] font-semibold text-[#4E5968] hover:bg-[#E5E8EB]"
                 >
                   취소
                 </button>
                 <button
-                  type="button"
-                  onClick={() => handleSaveProfile(editForm)}
-                  className="rounded-xl bg-[#3182F6] px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:bg-[#1B64DA] active:scale-95"
+                  type="submit"
+                  disabled={isUpdating}
+                  className="rounded-xl bg-[#3182F6] px-4 py-2 text-[13px] font-semibold text-white shadow-xs hover:bg-[#1B64DA] disabled:opacity-50"
                 >
-                  저장하기
+                  {isUpdating ? "저장 중..." : "저장 완료"}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* 새 링크 추가 다이얼로그 (Dialog) */}
-      <AddLinkDialog
-        open={isAddLinkDialogOpen}
-        onOpenChange={setIsAddLinkDialogOpen}
-        onAddLink={handleAddNewLink}
-        existingUrls={profile.links.map((l) => l.url)}
-      />
-
-      {/* 링크 삭제 확인 모달 (DeleteLinkDialog) */}
-      <DeleteLinkDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        link={deletingLink}
-        onConfirmDelete={handleDeleteLinkConfirm}
-      />
-    </main>
+      {/* 토스트 알림 */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-3">
+          <div className="rounded-full bg-[#191F28]/95 px-4 py-2.5 text-[13px] font-medium text-white shadow-lg backdrop-blur-xs">
+            {toastMessage}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

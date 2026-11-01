@@ -214,10 +214,10 @@ export function AddLinkDialog({
       await onAddLink(newLink);
       resetForm();
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("링크 추가 실패:", err);
       setSubmitError(
-        err?.message || "Firestore 저장 중 오류가 발생했습니다. 다시 시도해 주세요."
+        (err as Error)?.message || "Firestore 저장 중 오류가 발생했습니다. 다시 시도해 주세요."
       );
     } finally {
       setIsSubmitting(false);

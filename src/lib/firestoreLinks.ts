@@ -3,30 +3,39 @@ import {
   doc,
   addDoc,
   getDocs,
+  getDoc,
+  setDoc,
   query,
   orderBy,
   onSnapshot,
   serverTimestamp,
   deleteDoc,
   updateDoc,
+  DocumentSnapshot,
+  QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { LinkItem } from "@/types/profile";
-
-export const FIRESTORE_LINKS_COLLECTION_PATH = "users/anonymous/links";
+import { LinkItem, ProfileData, DEFAULT_PROFILE } from "@/types/profile";
 
 /**
- * Firestore의 'users/anonymous/links' 서브컬렉션 참조 반환
+ * Firestore의 'user/{uid}/links' 서브컬렉션 참조 반환
  */
-export const getAnonymousLinksCollection = () => {
-  return collection(db, "users", "anonymous", "links");
+export const getUserLinksCollection = (uid: string) => {
+  return collection(db, "user", uid, "links");
+};
+
+/**
+ * Firestore의 'user/{uid}' 유저 문서 참조 반환
+ */
+export const getUserDocRef = (uid: string) => {
+  return doc(db, "user", uid);
 };
 
 /**
  * Firestore 문서 데이터를 LinkItem 인터페이스로 변환
  */
-export function mapDocToLink(docSnap: any): LinkItem {
-  const data = docSnap.data();
+export function mapDocToLink(docSnap: QueryDocumentSnapshot | DocumentSnapshot): LinkItem {
+  const data = docSnap.data() || {};
   let createdAtMs: number | undefined;
   let updatedAtMs: number | undefined;
 
@@ -52,28 +61,68 @@ export function mapDocToLink(docSnap: any): LinkItem {
 
   return {
     id: docSnap.id,
-    title: data.title || "",
-    subtitle: data.subtitle || undefined,
-    url: data.url || "",
-    iconType: data.iconType || "link",
-    badge: data.badge || undefined,
-    badgeColor: data.badgeColor || undefined,
+    title: (data.title as string) || "",
+    subtitle: (data.subtitle as string) || undefined,
+    url: (data.url as string) || "",
+    iconType: (data.iconType as LinkItem["iconType"]) || "link",
+    badge: (data.badge as string) || undefined,
+    badgeColor: (data.badgeColor as string) || undefined,
     createdAtMs,
     updatedAtMs,
   };
 }
 
 /**
- * 새 링크를 Firestore 'users/anonymous/links' 경로에 추가합니다.
+ * user/{uid} 경로에서 유저 프로필 정보를 조회합니다.
+ */
+export async function getUserProfileFromFirestore(uid: string): Promise<ProfileData | null> {
+  const userRef = getUserDocRef(uid);
+  const snap = await getDoc(userRef);
+  if (!snap.exists()) return null;
+
+  const data = snap.data();
+  return {
+    username: (data.username as string) || (data.email as string)?.split("@")[0] || "user",
+    displayName:
+      (data.displayName as string) ||
+      (data.email as string)?.split("@")[0] ||
+      DEFAULT_PROFILE.displayName,
+    badgeText: (data.badgeText as string) || DEFAULT_PROFILE.badgeText,
+    avatarUrl: (data.avatarUrl as string) || DEFAULT_PROFILE.avatarUrl,
+    bio: (data.bio as string) || DEFAULT_PROFILE.bio,
+    socialLinks: (data.socialLinks as ProfileData["socialLinks"]) || DEFAULT_PROFILE.socialLinks,
+    links: [],
+    contactEmail: (data.contactEmail as string) || undefined,
+  };
+}
+
+/**
+ * user/{uid} 경로의 유저 프로필 정보를 업데이트합니다.
+ */
+export async function updateUserProfileInFirestore(
+  uid: string,
+  profile: Partial<ProfileData>
+): Promise<void> {
+  const userRef = getUserDocRef(uid);
+  const updatePayload: Record<string, unknown> = {
+    ...profile,
+    updatedAt: serverTimestamp(),
+  };
+  await setDoc(userRef, updatePayload, { merge: true });
+}
+
+/**
+ * 새 링크를 Firestore 'user/{uid}/links' 경로에 추가합니다.
  * createdAt, updatedAt은 serverTimestamp()로 최신순 정렬 기준이 됩니다.
  */
 export async function addLinkToFirestore(
+  uid: string,
   link: Omit<LinkItem, "id"> & { id?: string }
 ): Promise<LinkItem> {
-  const colRef = getAnonymousLinksCollection();
+  const colRef = getUserLinksCollection(uid);
 
   // Firestore는 undefined 값을 허용하지 않으므로 정의된 값만 전달
-  const docData: Record<string, any> = {
+  const docData: Record<string, unknown> = {
     title: link.title.trim(),
     url: link.url.trim(),
     createdAt: serverTimestamp(),
@@ -109,11 +158,11 @@ export async function addLinkToFirestore(
 }
 
 /**
- * Firestore 'users/anonymous/links' 경로에서 링크 목록을 불러옵니다.
+ * Firestore 'user/{uid}/links' 경로에서 링크 목록을 불러옵니다.
  * createdAt 기준 최신순(desc) 정렬
  */
-export async function getLinksFromFirestore(): Promise<LinkItem[]> {
-  const colRef = getAnonymousLinksCollection();
+export async function getLinksFromFirestore(uid: string): Promise<LinkItem[]> {
+  const colRef = getUserLinksCollection(uid);
 
   try {
     const q = query(colRef, orderBy("createdAt", "desc"));
@@ -130,14 +179,15 @@ export async function getLinksFromFirestore(): Promise<LinkItem[]> {
 }
 
 /**
- * Firestore 'users/anonymous/links' 경로의 링크 목록을 실시간 구독(onSnapshot)합니다.
+ * Firestore 'user/{uid}/links' 경로의 링크 목록을 실시간 구독(onSnapshot)합니다.
  * createdAt 기준 최신순(desc) 정렬하며, 새 링크 추가/수정/삭제 시 실시간 콜백이 트리거됩니다.
  */
 export function subscribeLinksFromFirestore(
+  uid: string,
   onUpdate: (links: LinkItem[]) => void,
   onError?: (error: Error) => void
 ): () => void {
-  const colRef = getAnonymousLinksCollection();
+  const colRef = getUserLinksCollection(uid);
   const q = query(colRef, orderBy("createdAt", "desc"));
 
   let isSubscribed = true;
@@ -154,7 +204,6 @@ export function subscribeLinksFromFirestore(
       (err) => {
         if (!isSubscribed) return;
         console.warn("Firestore onSnapshot orderBy error, falling back to unsorted with client sort:", err);
-        // 만약 인덱스 미생성 등으로 orderBy 실패 시 기본 쿼리로 폴백 구독 시도
         try {
           if (activeUnsubscribe) {
             activeUnsubscribe();
@@ -171,14 +220,14 @@ export function subscribeLinksFromFirestore(
               if (onError && isSubscribed) onError(fallbackErr);
             }
           );
-        } catch (e: any) {
-          if (onError && isSubscribed) onError(e);
+        } catch (e: unknown) {
+          if (onError && isSubscribed) onError(e as Error);
         }
       }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Firestore 구독 실패:", err);
-    if (onError) onError(err);
+    if (onError) onError(err as Error);
   }
 
   return () => {
@@ -190,22 +239,23 @@ export function subscribeLinksFromFirestore(
 }
 
 /**
- * Firestore 'users/anonymous/links' 경로에서 특정 링크를 삭제합니다.
+ * Firestore 'user/{uid}/links' 경로에서 특정 링크를 삭제합니다.
  */
-export async function deleteLinkFromFirestore(id: string): Promise<void> {
-  const docRef = doc(db, "users", "anonymous", "links", id);
+export async function deleteLinkFromFirestore(uid: string, id: string): Promise<void> {
+  const docRef = doc(db, "user", uid, "links", id);
   await deleteDoc(docRef);
 }
 
 /**
- * Firestore 'users/anonymous/links' 경로에서 특정 링크를 수정합니다.
+ * Firestore 'user/{uid}/links' 경로에서 특정 링크를 수정합니다.
  */
 export async function updateLinkInFirestore(
+  uid: string,
   id: string,
   updatedData: Partial<Omit<LinkItem, "id">>
 ): Promise<void> {
-  const docRef = doc(db, "users", "anonymous", "links", id);
-  const data: Record<string, any> = {
+  const docRef = doc(db, "user", uid, "links", id);
+  const data: Record<string, unknown> = {
     updatedAt: serverTimestamp(),
   };
 
@@ -230,5 +280,3 @@ export async function updateLinkInFirestore(
 
   await updateDoc(docRef, data);
 }
-
-

@@ -37,9 +37,9 @@ export function DeleteLinkDialog({
       setError(null);
       await onConfirmDelete(link.id);
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("삭제 실패:", err);
-      setError(err?.message || "삭제 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      setError((err as Error)?.message || "삭제 중 오류가 발생했습니다. 다시 시도해 주세요.");
     } finally {
       setIsDeleting(false);
     }
