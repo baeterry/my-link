@@ -184,13 +184,13 @@ export default function LinksClient() {
 
       setLinks((prev) =>
         prev.map((item) =>
-          item.id === id ? { ...item, ...updatedData } : item
+          item.id === id ? { ...item, ...updatedData, updatedAtMs: Date.now() } : item
         )
       );
 
       setProfile((prev) => {
         const updatedLinks = prev.links.map((item) =>
-          item.id === id ? { ...item, ...updatedData } : item
+          item.id === id ? { ...item, ...updatedData, updatedAtMs: Date.now() } : item
         );
         const updatedProfile = { ...prev, links: updatedLinks };
         try {

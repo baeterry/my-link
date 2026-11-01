@@ -13,6 +13,8 @@ export interface LinkItem {
   badge?: string;
   badgeColor?: string;
   iconType?: "video" | "shopping" | "globe" | "message" | "link";
+  createdAtMs?: number;
+  updatedAtMs?: number;
 }
 
 export interface ProfileData {

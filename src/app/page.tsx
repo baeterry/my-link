@@ -264,7 +264,7 @@ export default function ProfilePage() {
 
       setProfile((prev) => {
         const nextLinks = prev.links.map((l) =>
-          l.id === id ? { ...l, ...updatedData } : l
+          l.id === id ? { ...l, ...updatedData, updatedAtMs: Date.now() } : l
         );
         const updated = { ...prev, links: nextLinks };
         try {
@@ -276,7 +276,7 @@ export default function ProfilePage() {
       setEditForm((prev) => ({
         ...prev,
         links: prev.links.map((l) =>
-          l.id === id ? { ...l, ...updatedData } : l
+          l.id === id ? { ...l, ...updatedData, updatedAtMs: Date.now() } : l
         ),
       }));
 

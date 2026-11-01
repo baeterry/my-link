@@ -16,6 +16,7 @@ import {
   Loader2,
   X,
   Check,
+  Clock,
 } from "lucide-react";
 import { LinkItem } from "@/types/profile";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,35 @@ export function getLinkItemIcon(iconType?: string) {
     default:
       return <LinkIcon className="h-5 w-5 text-[#4E5968]" />;
   }
+}
+
+/**
+ * 수정된 시각(updatedAtMs)을 읽기 쉬운 상대/절대 시각 문자열로 변환
+ */
+export function formatUpdatedAt(timestamp?: number): string {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return "방금 전";
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}.${month}.${day} ${hours}:${minutes}`;
 }
 
 const CATEGORY_OPTIONS: {
@@ -263,13 +293,21 @@ export function LinkCardItem({
         )}
       >
         <div className="mb-3.5 flex items-center justify-between border-b border-[#E5E8EB] pb-2.5">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E8F3FF] text-[#3182F6]">
-              <Edit2 className="h-3.5 w-3.5 stroke-[2.5]" />
-            </span>
-            <span className="text-[14px] font-bold text-[#191F28]">
-              링크 인라인 수정
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E8F3FF] text-[#3182F6]">
+                <Edit2 className="h-3.5 w-3.5 stroke-[2.5]" />
+              </span>
+              <span className="text-[14px] font-bold text-[#191F28]">
+                링크 인라인 수정
+              </span>
+            </div>
+            {link.updatedAtMs && (
+              <span className="flex items-center gap-1 text-[11px] text-[#8B95A1]">
+                <Clock className="h-3 w-3 text-[#B0B8C1]" />
+                <span>마지막 수정: {formatUpdatedAt(link.updatedAtMs)}</span>
+              </span>
+            )}
           </div>
           <button
             type="button"
@@ -552,10 +590,23 @@ export function LinkCardItem({
             </p>
           )}
 
-          {showUrl && (
-            <p className="mt-1 truncate text-[11px] text-[#B0B8C1]">
-              {link.url}
-            </p>
+          {(showUrl || link.updatedAtMs) && (
+            <div className="mt-1 flex items-center flex-wrap gap-x-2 gap-y-0.5 text-[11px]">
+              {showUrl && (
+                <span className="truncate max-w-[200px] sm:max-w-xs text-[#B0B8C1]">
+                  {link.url}
+                </span>
+              )}
+              {showUrl && link.updatedAtMs && (
+                <span className="text-[#D1D6DB]">·</span>
+              )}
+              {link.updatedAtMs && (
+                <span className="flex items-center gap-1 text-[#8B95A1] shrink-0">
+                  <Clock className="h-3 w-3 text-[#B0B8C1]" />
+                  <span>수정 {formatUpdatedAt(link.updatedAtMs)}</span>
+                </span>
+              )}
+            </div>
           )}
         </div>
       </a>

@@ -25,9 +25,10 @@ export const getAnonymousLinksCollection = () => {
 /**
  * Firestore 문서 데이터를 LinkItem 인터페이스로 변환
  */
-export function mapDocToLink(docSnap: any): LinkItem & { createdAtMs?: number } {
+export function mapDocToLink(docSnap: any): LinkItem {
   const data = docSnap.data();
   let createdAtMs: number | undefined;
+  let updatedAtMs: number | undefined;
 
   if (data.createdAt) {
     if (typeof data.createdAt.toMillis === "function") {
@@ -36,6 +37,16 @@ export function mapDocToLink(docSnap: any): LinkItem & { createdAtMs?: number } 
       createdAtMs = data.createdAt.getTime();
     } else if (typeof data.createdAt === "number") {
       createdAtMs = data.createdAt;
+    }
+  }
+
+  if (data.updatedAt) {
+    if (typeof data.updatedAt.toMillis === "function") {
+      updatedAtMs = data.updatedAt.toMillis();
+    } else if (data.updatedAt instanceof Date) {
+      updatedAtMs = data.updatedAt.getTime();
+    } else if (typeof data.updatedAt === "number") {
+      updatedAtMs = data.updatedAt;
     }
   }
 
@@ -48,6 +59,7 @@ export function mapDocToLink(docSnap: any): LinkItem & { createdAtMs?: number } 
     badge: data.badge || undefined,
     badgeColor: data.badgeColor || undefined,
     createdAtMs,
+    updatedAtMs,
   };
 }
 
@@ -91,6 +103,8 @@ export async function addLinkToFirestore(
     iconType: link.iconType || "link",
     badge: link.badge?.trim() || undefined,
     badgeColor: link.badgeColor?.trim() || undefined,
+    createdAtMs: Date.now(),
+    updatedAtMs: Date.now(),
   };
 }
 
