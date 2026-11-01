@@ -24,10 +24,14 @@ import {
 } from "lucide-react";
 import { ProfileData, DEFAULT_PROFILE, LinkItem } from "@/types/profile";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
+import { DeleteLinkDialog } from "@/components/DeleteLinkDialog";
+import { LinkCardItem } from "@/components/LinkCardItem";
 import {
   addLinkToFirestore,
   getLinksFromFirestore,
   subscribeLinksFromFirestore,
+  updateLinkInFirestore,
+  deleteLinkFromFirestore,
 } from "@/lib/firestoreLinks";
 
 const STORAGE_KEY = "mylink_profile_data";
@@ -97,6 +101,8 @@ export default function ProfilePage() {
 
   // 링크 추가 다이얼로그 상태
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
+  const [deletingLink, setDeletingLink] = useState<LinkItem | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // 1. 페이지 로드 시 프로필 메타데이터 로드 및 Firestore('users/anonymous/links') 최신순 링크 실시간 동기화
   useEffect(() => {
@@ -167,6 +173,13 @@ export default function ProfilePage() {
     }, 2400);
   };
 
+  const handleCopyLink = (url: string, title: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+      showToast(`'${title}' 링크 주소가 복사되었어요 📋`);
+    }
+  };
+
   // 2. 수동 새로고침 (최신 목록 갱신)
   const handleRefresh = async () => {
     if (isUpdating || isLinksLoading) return;
@@ -234,6 +247,77 @@ export default function ProfilePage() {
       throw e;
     } finally {
       // 실시간 리스너가 최신 순서를 확정지을 때까지 짧게 로딩 인디케이터 유지
+      setTimeout(() => {
+        setIsUpdating(false);
+      }, 500);
+    }
+  };
+
+  // 5. Firestore 링크 수정 핸들러 (인라인 편집)
+  const handleUpdateLink = async (
+    id: string,
+    updatedData: Partial<Omit<LinkItem, "id">>
+  ) => {
+    try {
+      setIsUpdating(true);
+      await updateLinkInFirestore(id, updatedData);
+
+      setProfile((prev) => {
+        const nextLinks = prev.links.map((l) =>
+          l.id === id ? { ...l, ...updatedData } : l
+        );
+        const updated = { ...prev, links: nextLinks };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      setEditForm((prev) => ({
+        ...prev,
+        links: prev.links.map((l) =>
+          l.id === id ? { ...l, ...updatedData } : l
+        ),
+      }));
+
+      showToast("링크가 성공적으로 수정되었어요 ✨");
+    } catch (e: any) {
+      console.error("Firestore 링크 수정 실패:", e);
+      showToast("Firestore 링크 수정에 실패했어요");
+      throw e;
+    } finally {
+      setTimeout(() => {
+        setIsUpdating(false);
+      }, 500);
+    }
+  };
+
+  // 6. Firestore 링크 삭제 핸들러
+  const handleDeleteLinkConfirm = async (id: string) => {
+    try {
+      setIsUpdating(true);
+      await deleteLinkFromFirestore(id);
+
+      setProfile((prev) => {
+        const nextLinks = prev.links.filter((l) => l.id !== id);
+        const updated = { ...prev, links: nextLinks };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      setEditForm((prev) => ({
+        ...prev,
+        links: prev.links.filter((l) => l.id !== id),
+      }));
+
+      showToast("링크가 삭제되었어요 🗑️");
+    } catch (e: any) {
+      console.error("Firestore 링크 삭제 실패:", e);
+      showToast("Firestore 링크 삭제에 실패했어요");
+      throw e;
+    } finally {
       setTimeout(() => {
         setIsUpdating(false);
       }, 500);
@@ -463,45 +547,18 @@ export default function ProfilePage() {
               </div>
             ) : profile.links.length > 0 ? (
               profile.links.map((link) => (
-                <a
+                <LinkCardItem
                   key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center justify-between px-5 py-4 transition hover:bg-[#F9FAFB] active:bg-[#F2F4F6]"
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-3.5">
-                    {/* Icon Avatar */}
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#F2F4F6] group-hover:bg-white transition-colors shadow-none group-hover:shadow-sm">
-                      {getLinkIcon(link.iconType)}
-                    </div>
-
-                    {/* Text Stack */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-[15px] font-semibold text-[#191F28]">
-                          {link.title}
-                        </span>
-                        {link.badge && (
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                              link.badgeColor || "bg-[#E8F3FF] text-[#3182F6]"
-                            }`}
-                          >
-                            {link.badge}
-                          </span>
-                        )}
-                      </div>
-                      {link.subtitle && (
-                        <p className="mt-0.5 truncate text-[13px] text-[#8B95A1]">
-                          {link.subtitle}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <ChevronRight className="ml-2 h-5 w-5 shrink-0 text-[#B0B8C1] transition group-hover:translate-x-0.5 group-hover:text-[#4E5968]" />
-                </a>
+                  link={link}
+                  onCopy={handleCopyLink}
+                  onUpdateLink={handleUpdateLink}
+                  onDeleteClick={(targetLink) => {
+                    setDeletingLink(targetLink);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  existingUrls={profile.links.map((l) => l.url)}
+                  showUrl={false}
+                />
               ))
             ) : (
               <div className="py-12 text-center text-[14px] text-[#8B95A1]">
@@ -711,6 +768,14 @@ export default function ProfilePage() {
         onOpenChange={setIsAddLinkDialogOpen}
         onAddLink={handleAddNewLink}
         existingUrls={profile.links.map((l) => l.url)}
+      />
+
+      {/* 링크 삭제 확인 모달 (DeleteLinkDialog) */}
+      <DeleteLinkDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        link={deletingLink}
+        onConfirmDelete={handleDeleteLinkConfirm}
       />
     </main>
   );

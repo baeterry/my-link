@@ -24,10 +24,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { LinkCardItem } from "@/components/LinkCardItem";
 import { CategoryFilterTabs } from "@/components/CategoryFilterTabs";
 import { AddLinkDialog } from "@/components/AddLinkDialog";
+import { DeleteLinkDialog } from "@/components/DeleteLinkDialog";
 import {
   addLinkToFirestore,
   getLinksFromFirestore,
   subscribeLinksFromFirestore,
+  updateLinkInFirestore,
+  deleteLinkFromFirestore,
 } from "@/lib/firestoreLinks";
 
 const STORAGE_KEY = "mylink_profile_data";
@@ -53,6 +56,8 @@ export default function LinksClient() {
   const [isLinksLoading, setIsLinksLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
+  const [deletingLink, setDeletingLink] = useState<LinkItem | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -161,6 +166,72 @@ export default function LinksClient() {
       console.error("Firestore 링크 저장 실패:", e);
       showToast("Firestore 링크 추가에 실패했어요");
       throw e;
+    } finally {
+      setTimeout(() => {
+        setIsUpdating(false);
+      }, 500);
+    }
+  };
+
+  // Firestore 링크 수정 핸들러 (인라인 편집)
+  const handleUpdateLink = async (
+    id: string,
+    updatedData: Partial<Omit<LinkItem, "id">>
+  ) => {
+    try {
+      setIsUpdating(true);
+      await updateLinkInFirestore(id, updatedData);
+
+      setLinks((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, ...updatedData } : item
+        )
+      );
+
+      setProfile((prev) => {
+        const updatedLinks = prev.links.map((item) =>
+          item.id === id ? { ...item, ...updatedData } : item
+        );
+        const updatedProfile = { ...prev, links: updatedLinks };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
+        } catch {}
+        return updatedProfile;
+      });
+
+      showToast("링크가 성공적으로 수정되었어요 ✨");
+    } catch (err: any) {
+      console.error("Firestore 링크 수정 실패:", err);
+      showToast("링크 수정에 실패했어요");
+      throw err;
+    } finally {
+      setTimeout(() => {
+        setIsUpdating(false);
+      }, 500);
+    }
+  };
+
+  // Firestore 링크 삭제 확인 핸들러
+  const handleDeleteLinkConfirm = async (id: string) => {
+    try {
+      setIsUpdating(true);
+      await deleteLinkFromFirestore(id);
+
+      setLinks((prev) => prev.filter((item) => item.id !== id));
+      setProfile((prev) => {
+        const updatedLinks = prev.links.filter((item) => item.id !== id);
+        const updatedProfile = { ...prev, links: updatedLinks };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProfile));
+        } catch {}
+        return updatedProfile;
+      });
+
+      showToast("링크가 삭제되었어요 🗑️");
+    } catch (err: any) {
+      console.error("Firestore 링크 삭제 실패:", err);
+      showToast("링크 삭제에 실패했어요");
+      throw err;
     } finally {
       setTimeout(() => {
         setIsUpdating(false);
@@ -418,6 +489,12 @@ export default function LinksClient() {
                   key={link.id}
                   link={link}
                   onCopy={handleCopyLink}
+                  onUpdateLink={handleUpdateLink}
+                  onDeleteClick={(targetLink) => {
+                    setDeletingLink(targetLink);
+                    setIsDeleteDialogOpen(true);
+                  }}
+                  existingUrls={links.map((l) => l.url)}
                 />
               ))
             ) : (
@@ -495,6 +572,14 @@ export default function LinksClient() {
         onOpenChange={setIsAddLinkDialogOpen}
         onAddLink={handleAddLink}
         existingUrls={links.map((l) => l.url)}
+      />
+
+      {/* 링크 삭제 확인 모달 (DeleteLinkDialog) */}
+      <DeleteLinkDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        link={deletingLink}
+        onConfirmDelete={handleDeleteLinkConfirm}
       />
     </main>
   );

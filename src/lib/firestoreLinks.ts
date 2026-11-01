@@ -8,6 +8,7 @@ import {
   onSnapshot,
   serverTimestamp,
   deleteDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { LinkItem } from "@/types/profile";
@@ -181,4 +182,39 @@ export async function deleteLinkFromFirestore(id: string): Promise<void> {
   const docRef = doc(db, "users", "anonymous", "links", id);
   await deleteDoc(docRef);
 }
+
+/**
+ * Firestore 'users/anonymous/links' 경로에서 특정 링크를 수정합니다.
+ */
+export async function updateLinkInFirestore(
+  id: string,
+  updatedData: Partial<Omit<LinkItem, "id">>
+): Promise<void> {
+  const docRef = doc(db, "users", "anonymous", "links", id);
+  const data: Record<string, any> = {
+    updatedAt: serverTimestamp(),
+  };
+
+  if (updatedData.title !== undefined) {
+    data.title = updatedData.title.trim();
+  }
+  if (updatedData.url !== undefined) {
+    data.url = updatedData.url.trim();
+  }
+  if (updatedData.subtitle !== undefined) {
+    data.subtitle = updatedData.subtitle.trim();
+  }
+  if (updatedData.iconType !== undefined) {
+    data.iconType = updatedData.iconType;
+  }
+  if (updatedData.badge !== undefined) {
+    data.badge = updatedData.badge.trim();
+  }
+  if (updatedData.badgeColor !== undefined) {
+    data.badgeColor = updatedData.badgeColor.trim();
+  }
+
+  await updateDoc(docRef, data);
+}
+
 
