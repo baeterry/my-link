@@ -2,14 +2,17 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LogOut, Share2, Loader2, Sparkles } from "lucide-react";
+import { Share2, Loader2, Sparkles } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { ProfileDropdown } from "./ProfileDropdown";
 
 interface HeaderProps {
   onShare?: () => void;
   showShare?: boolean;
+  onOpenEditProfile?: () => void;
+  onOpenAddLink?: () => void;
+  linksCount?: number;
 }
 
 export function GoogleIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -35,34 +38,29 @@ export function GoogleIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-export function Header({ onShare, showShare = false }: HeaderProps) {
-  const { user, userProfile, loading, signInWithGoogle, logout } = useAuth();
+export function Header({
+  onShare,
+  showShare = false,
+  onOpenEditProfile,
+  onOpenAddLink,
+  linksCount,
+}: HeaderProps) {
+  const { user, loading, signInWithGoogle } = useAuth();
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const pathname = usePathname();
 
   const handleGoogleLogin = async () => {
     try {
+      setIsAuthLoading(true);
       await signInWithGoogle();
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string };
-      // 사용자가 팝업을 직접 닫은 경우는 경고창 생략
       if (err?.code !== "auth/popup-closed-by-user") {
         console.error("로그인 에러:", error);
         alert("구글 로그인 중 문제가 발생했어요. 다시 시도해주세요.");
       }
-    }
-  };
-
-  const handleLogout = async () => {
-    if (confirm("로그아웃 하시겠습니까?")) {
-      try {
-        setIsAuthLoading(true);
-        await logout();
-      } catch (error) {
-        console.error("로그아웃 에러:", error);
-      } finally {
-        setIsAuthLoading(false);
-      }
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
@@ -101,46 +99,18 @@ export function Header({ onShare, showShare = false }: HeaderProps) {
 
       <div className="flex items-center gap-2">
         {loading || isAuthLoading ? (
-          <div className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-[#8B95A1] shadow-sm">
+          <div className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[13px] font-medium text-[#8B95A1] shadow-sm border border-[#E5E8EB]">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-[#3182F6]" />
             <span>처리 중...</span>
           </div>
         ) : user ? (
-          // 로그인 완료 상태
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 rounded-full bg-white py-1 pl-1.5 pr-2.5 shadow-sm border border-[#E5E8EB]">
-              {user.photoURL || userProfile?.avatarUrl ? (
-                <div className="relative h-6 w-6 overflow-hidden rounded-full ring-1 ring-[#3182F6]/30">
-                  <Image
-                    src={user.photoURL || userProfile?.avatarUrl || ""}
-                    alt="유저 프로필"
-                    fill
-                    sizes="24px"
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#3182F6] text-[11px] font-bold text-white">
-                  {(user.email?.split("@")[0] || "U").charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="hidden sm:inline-block max-w-[90px] truncate text-[12px] font-medium text-[#333D4B]">
-                {userProfile?.displayName || user.email?.split("@")[0] || "유저"}
-              </span>
-            </div>
-
-            {/* 로그아웃 버튼 */}
-            <button
-              onClick={handleLogout}
-              type="button"
-              className="flex items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#8B95A1] shadow-sm border border-[#E5E8EB] transition hover:bg-[#FEECEE] hover:text-[#F04452] active:scale-95"
-              title="로그아웃"
-              aria-label="로그아웃"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">로그아웃</span>
-            </button>
-          </div>
+          // 로그인 완료 상태: 프로필 드롭다운 메뉴
+          <ProfileDropdown
+            onOpenEditProfile={onOpenEditProfile}
+            onOpenAddLink={onOpenAddLink}
+            onShare={onShare}
+            linksCount={linksCount}
+          />
         ) : (
           // 미로그인 상태: 구글 로그인 버튼
           <button

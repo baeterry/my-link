@@ -289,7 +289,13 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#F2F4F6]">
-      <Header onShare={handleShare} showShare={!!user} />
+      <Header
+        onShare={handleShare}
+        showShare={false}
+        onOpenEditProfile={openEditModal}
+        onOpenAddLink={() => setIsAddLinkDialogOpen(true)}
+        linksCount={links.length}
+      />
 
       <main className="relative mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-md flex-col pb-24 text-[#191F28] antialiased">
         {/* ============================================================== */}
